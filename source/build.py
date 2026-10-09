@@ -10,6 +10,11 @@ html = f'''<!doctype html>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="LockDesk">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="description" content="LockDesk locksmith dispatch. Staff sign in.">
+<meta name="robots" content="noindex">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <title>LockDesk</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect x='3' y='10' width='18' height='12' rx='2' fill='%23a8781f'/%3E%3Cpath d='M7 10V7a5 5 0 0 1 10 0v3' stroke='%23a8781f' stroke-width='2.4' fill='none'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -27,4 +32,15 @@ html = f'''<!doctype html>
 '''
 out = pathlib.Path('dist/site'); out.mkdir(parents=True, exist_ok=True)
 (out/'index.html').write_text(html)
+import json, shutil
+for f in pathlib.Path('public').iterdir(): shutil.copy(f, out/f.name)
+(out/'manifest.webmanifest').write_text(json.dumps({
+  'name': 'LockDesk', 'short_name': 'LockDesk', 'description': 'Locksmith dispatch',
+  'start_url': './', 'scope': './', 'display': 'standalone', 'orientation': 'any',
+  'background_color': '#f3f4f6', 'theme_color': '#1b2433',
+  'icons': [
+    {'src': 'icon-192.png', 'sizes': '192x192', 'type': 'image/png'},
+    {'src': 'icon-512.png', 'sizes': '512x512', 'type': 'image/png'},
+    {'src': 'icon-maskable-512.png', 'sizes': '512x512', 'type': 'image/png', 'purpose': 'maskable'},
+  ]}, indent=2))
 print(len(html))

@@ -7,6 +7,7 @@ import { Calendar, CustomerDetail, Customers, Dashboard, JobDetail, JobsList, Re
 import { Team, useTeamAlerts } from './team'
 import { AccountModal, PendingScreen } from './account'
 import { requestPasswordReset } from './model'
+import { InstallHint } from './install'
 import { JobFormPage } from './jobform'
 import { TechHome, TechJob } from './tech'
 
@@ -61,6 +62,7 @@ function Login() {
         {err ? <div className="alert err">{err}</div> : null}
         {msg ? <div className="alert ok">{msg}</div> : null}
         <button className="btn primary full big" disabled={busy}>{busy ? 'One moment…' : mode === 'in' ? 'Sign in' : mode === 'up' ? 'Request access' : 'Ask the owner to reset it'}</button>
+        <InstallHint />
         <div className="login-links">
           {mode !== 'in' ? <button type="button" className="link" onClick={() => setMode('in')}>Back to sign in</button> : (
             <>

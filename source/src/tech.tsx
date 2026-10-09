@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { useStore } from './store'
 import { Empty, Field, Modal, PriorityBadge, StatusBadge } from './ui'
 import { PartsBadge, PartsPanel } from './parts'
+import { InstallHint } from './install'
 import {
   Job, acceptJob, fmtDateTime, fmtWhen, isToday, locallyAccepted, mapsHref, money, queueText, setStatus, telHref, titleCase, updateJob,
 } from './model'
@@ -22,6 +23,7 @@ export function TechHome({ openJob }: { openJob: (id: string) => void }) {
 
   return (
     <div className="tech">
+      <InstallHint />
       <div className="tech-hello">Hi {me?.name?.split(' ')[0] || 'there'}</div>
       {active ? (
         <button className="active-job" onClick={() => openJob(active.id)}>
