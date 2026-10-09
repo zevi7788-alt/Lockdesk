@@ -123,6 +123,13 @@ export const SPEC: Record<string, Record<string, string[]>> = {
     id: ['id'],
     job_id: ['job_id'],
   },
+  invoices: {
+    id: ['id'],
+    number: ['number'],
+  },
+  ld_company: {
+    id: ['id'],
+  },
   access_requests: {
     id: ['id'],
     email: ['email'],
@@ -153,7 +160,7 @@ export type Schema = {
   scannedAt: string
 }
 
-const SCHEMA_KEY = 'lockdesk.schema.v5'
+const SCHEMA_KEY = 'lockdesk.schema.v6'
 export let schema: Schema = { version: 3, tables: {}, cols: {}, allCols: {}, scannedAt: '' }
 
 function missingColumn(err: any) {

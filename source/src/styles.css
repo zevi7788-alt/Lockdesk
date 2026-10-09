@@ -383,3 +383,55 @@ legend { padding: 0 6px; font-size: 13px; font-weight: 600; text-transform: uppe
 /* Home screen hint */
 .install-hint { display: flex; gap: 12px; align-items: center; justify-content: space-between; padding: 12px 14px; border: 1px solid var(--line-2); border-radius: 10px; background: var(--surface-2); font-size: 14px; }
 .install-hint .small { color: var(--ink-2); margin-top: 2px; }
+
+/* Invoices */
+.inv-open { background: var(--amber-bg); color: var(--amber); }
+.inv-paid { background: var(--st-done-bg); color: var(--st-done); }
+.inv-void { background: var(--st-cancel-bg); color: var(--st-cancel); }
+.inv-panel { display: flex; flex-direction: column; gap: 8px; }
+.inv-panel-top { display: flex; gap: 10px; align-items: center; }
+.inv-panel-total { margin-left: auto; font-size: 18px; font-weight: 600; }
+.inv-share { display: flex; gap: 8px; flex-wrap: wrap; }
+.inv-share .btn { flex: 1; min-width: 96px; }
+.invoice-doc { position: relative; background: #fff; color: #141a24; border: 1px solid var(--line); border-radius: 10px; padding: 32px; max-width: 760px; width: 100%; margin: 0 auto; display: flex; flex-direction: column; gap: 24px; font-size: 14px; overflow: hidden; }
+.inv-head { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.inv-co { font-size: 22px; font-weight: 700; }
+.inv-co-lines { color: #4a5466; margin-top: 4px; display: flex; flex-direction: column; gap: 2px; }
+.inv-meta { text-align: right; display: flex; flex-direction: column; gap: 2px; }
+.inv-title { font-size: 13px; text-transform: uppercase; letter-spacing: .12em; color: #a8781f; font-weight: 700; }
+.inv-parties { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 14px 0; border-top: 1px solid #dde1e8; border-bottom: 1px solid #dde1e8; }
+.inv-parties > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.inv-label { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: #7b8597; font-weight: 600; margin-bottom: 2px; }
+.inv-lines { width: 100%; border-collapse: collapse; }
+.inv-lines th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: #7b8597; padding: 6px 0; border-bottom: 1px solid #dde1e8; }
+.inv-lines td { padding: 10px 0; border-bottom: 1px solid #eef0f4; vertical-align: top; }
+.inv-lines .r { text-align: right; padding-left: 12px; }
+.inv-totals { display: flex; flex-direction: column; gap: 6px; align-self: flex-end; min-width: min(280px, 100%); }
+.inv-totals > div { display: flex; justify-content: space-between; gap: 24px; }
+.inv-total { font-weight: 700; font-size: 16px; padding-top: 6px; border-top: 1px solid #dde1e8; }
+.inv-paid { color: #1d7a43; }
+.inv-due { font-weight: 600; }
+.inv-notes { margin: 0; white-space: pre-wrap; }
+.inv-pay p { margin: 4px 0 0; white-space: pre-wrap; }
+.inv-pay { padding: 12px 14px; background: #f8f9fb; border-radius: 8px; }
+.inv-foot { color: #7b8597; font-size: 13px; text-align: center; }
+.paid-stamp { position: absolute; top: 26px; right: -44px; transform: rotate(35deg); background: #1d7a43; color: #fff; font-weight: 800; letter-spacing: .2em; text-transform: uppercase; padding: 6px 60px; font-size: 14px; }
+.inv-page { min-height: 100vh; padding: 24px 16px; background: var(--bg); display: flex; flex-direction: column; gap: 16px; align-items: center; }
+.inv-actions { display: flex; gap: 8px; }
+.line-edit { display: grid; grid-template-columns: 1fr 64px 96px auto; gap: 6px; }
+.check { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; }
+.check input { width: 20px; min-height: 20px; margin-top: 2px; }
+@media (max-width: 760px) {
+  .invoice-doc { padding: 20px 16px; }
+  .inv-parties { grid-template-columns: 1fr; }
+  .inv-meta { text-align: left; }
+  .paid-stamp { right: -54px; top: 18px; font-size: 12px; }
+}
+@media print {
+  body { background: #fff; }
+  .side, .topbar, .no-print, .toasts, .install-hint, .scrim { display: none !important; }
+  .shell { display: block; }
+  .page { padding: 0; }
+  .inv-page { padding: 0; background: #fff; }
+  .invoice-doc { border: 0; max-width: none; padding: 0; }
+}

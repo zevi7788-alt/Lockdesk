@@ -8,6 +8,7 @@ import { Team, useTeamAlerts } from './team'
 import { AccountModal, PendingScreen } from './account'
 import { requestPasswordReset } from './model'
 import { InstallHint } from './install'
+import { InvoiceDetail, InvoicesPage, PublicInvoice, SettingsPage } from './invoices'
 import { JobFormPage } from './jobform'
 import { TechHome, TechJob } from './tech'
 
@@ -115,6 +116,7 @@ const NAV = [
   { href: 'jobs', label: 'Jobs', match: (r: string[]) => r[0] === 'jobs' },
   { href: 'calendar', label: 'Calendar', match: (r: string[]) => r[0] === 'calendar' },
   { href: 'customers', label: 'Customers', match: (r: string[]) => r[0] === 'customers' },
+  { href: 'invoices', label: 'Invoices', match: (r: string[]) => r[0] === 'invoices' || r[0] === 'settings' },
   { href: 'reports', label: 'Reports', match: (r: string[]) => r[0] === 'reports' },
   { href: 'team', label: 'Team', match: (r: string[]) => r[0] === 'team' },
 ]
@@ -135,6 +137,10 @@ function OfficeShell({ onTechView }: { onTechView: () => void }) {
   else if (r[0] === 'jobs') page = <JobsList />
   else if (r[0] === 'customers' && r[1]) page = <CustomerDetail id={r[1]} />
   else if (r[0] === 'customers') page = <Customers />
+  else if (r[0] === 'invoices' && r[1] === 'filter') page = <InvoicesPage filter={r[2]} />
+  else if (r[0] === 'invoices' && r[1]) page = <InvoiceDetail id={r[1]} />
+  else if (r[0] === 'invoices') page = <InvoicesPage />
+  else if (r[0] === 'settings') page = <SettingsPage />
   else if (r[0] === 'calendar') page = <Calendar />
   else if (r[0] === 'reports') page = <Reports />
   else if (r[0] === 'team') page = <Team />
@@ -300,6 +306,8 @@ function App() {
 
 function boot() {
   const root = createRoot(document.getElementById('root')!)
+  // Customer invoice links work without signing in
+  const pub = location.hash.match(/^#\/i\/([a-f0-9]{24,})/i)
   if (!window.supabase) {
     root.render(
       <div className="login"><div className="login-card">
@@ -311,7 +319,7 @@ function boot() {
     return
   }
   initClient()
-  root.render(<App />)
+  root.render(pub ? <PublicInvoice token={pub[1]} /> : <App />)
 }
 
 boot()

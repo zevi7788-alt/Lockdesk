@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { sb, col, schema } from './db'
+import { loadInvoices, loadCompany, saveCompany, Invoice, Company } from './invoices'
 import { loadAll, loadParts, loadAccountInfo, loadRequests, Job, Customer, Profile, Payment, Part, AccountInfo, AccessRequest, toProfile } from './model'
 
 type Store = {
@@ -14,6 +15,9 @@ type Store = {
   partsFor: (jobId: string) => Part[]
   accounts: Map<string, AccountInfo>
   requests: AccessRequest[]
+  invoices: Invoice[]
+  company: Company | null
+  emailReady: boolean
   techs: Profile[]
   loading: boolean
   error: string
@@ -27,7 +31,7 @@ const Ctx = createContext<Store>(null as any)
 export const useStore = () => useContext(Ctx)
 
 export function StoreProvider({ userId, email, children, onToast }: { userId: string; email: string; children: React.ReactNode; onToast: (m: string, k?: 'ok' | 'err') => void }) {
-  const [state, setState] = useState({ jobs: [] as Job[], customers: [] as Customer[], profiles: [] as Profile[], payments: [] as Payment[], parts: [] as Part[], accounts: new Map<string, AccountInfo>(), requests: [] as AccessRequest[] })
+  const [state, setState] = useState({ jobs: [] as Job[], customers: [] as Customer[], profiles: [] as Profile[], payments: [] as Payment[], parts: [] as Part[], accounts: new Map<string, AccountInfo>(), requests: [] as AccessRequest[], invoices: [] as Invoice[], company: null as Company | null, emailReady: false })
   const [me, setMe] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -37,10 +41,11 @@ export function StoreProvider({ userId, email, children, onToast }: { userId: st
 
   const reload = useCallback(async () => {
     try {
-      const [base, parts, accounts, requests] = await Promise.all([
+      const [base, parts, accounts, requests, invoices, co] = await Promise.all([
         loadAll(), loadParts().catch(() => []), loadAccountInfo().catch(() => new Map()), loadRequests().catch(() => []),
+        loadInvoices().catch(() => []), loadCompany().catch(() => ({ company: null, emailReady: false })),
       ])
-      const data = { ...base, parts, accounts, requests }
+      const data = { ...base, parts, accounts, requests, invoices, company: co.company, emailReady: co.emailReady }
       setState(data)
       let mine = data.profiles.find((p) => p.id === userId) || null
       if (!mine) {
@@ -49,6 +54,10 @@ export function StoreProvider({ userId, email, children, onToast }: { userId: st
         if (r.data) mine = toProfile(r.data)
       }
       setMe(mine)
+      // Remember this site's address so invoice emails link back to it
+      if (co.company && !co.company.appUrl && mine?.role === 'owner' && mine.approved) {
+        saveCompany(co.company).catch(() => {})
+      }
       // Alert technicians to newly assigned jobs
       const myIds = new Set(data.jobs.filter((j) => j.techId === userId).map((j) => j.id))
       if (knownJobs.current && mine?.role === 'technician') {
@@ -75,7 +84,7 @@ export function StoreProvider({ userId, email, children, onToast }: { userId: st
   useEffect(() => {
     reload()
     const ch = sb.channel('lockdesk-live')
-    for (const t of ['jobs', 'job_events', 'payments', 'customers', 'notifications', 'job_parts', 'profiles', 'access_requests']) {
+    for (const t of ['jobs', 'job_events', 'payments', 'customers', 'notifications', 'job_parts', 'profiles', 'access_requests', 'invoices']) {
       if (schema.tables[t] === false) continue
       ch.on('postgres_changes', { event: '*', schema: 'public', table: t }, soon)
     }

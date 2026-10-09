@@ -9,6 +9,7 @@ import {
 import { col, get, schema, scanSchema, SPEC } from './db'
 import { PartsBadge, PartsPanel, PartsSetup } from './parts'
 import { SetupScript } from './setup'
+import { CustomerInvoices, JobInvoicePanel, invoicesEnabled } from './invoices'
 import { partsEnabled, partsState, approvalEnabled } from './model'
 
 const PRI_RANK: Record<string, number> = { emergency: 0, high: 1, normal: 2, low: 3 }
@@ -308,6 +309,13 @@ export function JobDetail({ id }: { id: string }) {
             ) : null}
           </div>
 
+          {job.status === 'completed' || job.payStatus === 'paid' ? (
+            <div className="panel">
+              <h3>Invoice</h3>
+              <JobInvoicePanel job={job} />
+            </div>
+          ) : null}
+
           <div className="panel">
             <h3>Customer texts</h3>
             <p className="note-pending">SMS provider not connected yet. Texts are recorded below as queued and are not delivered until Twilio (or another provider) is set up.</p>
@@ -474,6 +482,7 @@ export function CustomerDetail({ id }: { id: string }) {
               ))}
             </div>
           </div>
+          <CustomerInvoices customerId={c.id} />
         </div>
       </div>
     </div>
@@ -637,11 +646,12 @@ export function SystemCheck() {
         <KV k="Last scan" v={schema.scannedAt ? new Date(schema.scannedAt).toLocaleString() : ''} />
         <KV k="Account approval" v={approvalEnabled() ? 'On. Every new account needs owner approval.' : 'Off. Run the update below.'} />
         <KV k="Parts ordering" v={partsEnabled() ? 'On' : 'Off. Run the update below.'} />
+        <KV k="Invoices" v={invoicesEnabled() ? 'On' : 'Off. Run the update below.'} />
         <KV k="SMS" v="Not connected. Texts are queued only." />
         <KV k="Card processing" v="Not connected. Payments are recorded manually." />
         {error ? <div className="alert err">{error}</div> : null}
       </div>
-      {!partsEnabled() || !approvalEnabled() ? <div className="panel warn-panel"><h3>Database update</h3><SetupScript intro="Turns on owner approval for every account, owner managed password resets, and parts ordering. It only adds to your database and is safe to run more than once." /></div> : null}
+      {!partsEnabled() || !approvalEnabled() || !invoicesEnabled() ? <div className="panel warn-panel"><h3>Database update</h3><SetupScript intro="Turns on owner approval for every account, owner managed password resets, parts ordering, and automatic invoices. It only adds to your database and is safe to run more than once." /></div> : null}
       <p className="muted small">LockDesk detects your database columns automatically. If something looks wrong, screenshot this page and send it over.</p>
       <div className="report-grid">
         {Object.keys(SPEC).map((t) => (
