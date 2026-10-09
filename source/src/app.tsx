@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client'
 import { initClient, sb, scanSchema, errText } from './db'
 import { StoreProvider, useStore } from './store'
 import { go, useRoute, Brand, Mark } from './ui'
+import { Icon } from './icons'
 import { Calendar, CustomerDetail, Customers, Dashboard, JobDetail, JobsList, Reports, SystemCheck } from './dispatch'
 import { Team, useTeamAlerts } from './team'
 import { AccountModal, PendingScreen } from './account'
@@ -109,20 +110,20 @@ function NewPassword({ done }: { done: () => void }) {
 
 // ---------------- Shells ----------------
 
-const NAV: { group: string; items: { href: string; label: string; match: (r: string[]) => boolean }[] }[] = [
+const NAV: { group: string; items: { href: string; label: string; icon: string; match: (r: string[]) => boolean }[] }[] = [
   { group: 'Operations', items: [
-    { href: '', label: 'Dispatch', match: (r) => r.length === 0 },
-    { href: 'new', label: 'New job', match: (r) => r[0] === 'new' },
-    { href: 'jobs', label: 'Jobs', match: (r) => r[0] === 'jobs' },
-    { href: 'calendar', label: 'Calendar', match: (r) => r[0] === 'calendar' },
+    { href: '', icon: 'dispatch', label: 'Dispatch', match: (r) => r.length === 0 },
+    { href: 'new', icon: 'plus', label: 'New job', match: (r) => r[0] === 'new' },
+    { href: 'jobs', icon: 'jobs', label: 'Jobs', match: (r) => r[0] === 'jobs' },
+    { href: 'calendar', icon: 'calendar', label: 'Calendar', match: (r) => r[0] === 'calendar' },
   ] },
   { group: 'Records', items: [
-    { href: 'customers', label: 'Customers', match: (r) => r[0] === 'customers' },
-    { href: 'invoices', label: 'Invoices', match: (r) => r[0] === 'invoices' || r[0] === 'settings' },
+    { href: 'customers', icon: 'customers', label: 'Customers', match: (r) => r[0] === 'customers' },
+    { href: 'invoices', icon: 'invoices', label: 'Invoices', match: (r) => r[0] === 'invoices' || r[0] === 'settings' },
   ] },
   { group: 'Business', items: [
-    { href: 'reports', label: 'Reports', match: (r) => r[0] === 'reports' },
-    { href: 'team', label: 'Team', match: (r) => r[0] === 'team' },
+    { href: 'reports', icon: 'reports', label: 'Reports', match: (r) => r[0] === 'reports' },
+    { href: 'team', icon: 'team', label: 'Team', match: (r) => r[0] === 'team' },
   ] },
 ]
 
@@ -162,7 +163,7 @@ function OfficeShell({ onTechView }: { onTechView: () => void }) {
               <div className="nav-label">{g.group}</div>
               {g.items.map((n) => (
                 <a key={n.href} href={'#/' + n.href} className={n.match(r) ? 'on' : ''}>
-                  {n.label}
+                  <Icon name={n.icon} /><span className="nav-t">{n.label}</span>
                   {n.href === 'jobs' && unpaid ? <span className="nav-n">{unpaid}</span> : null}
                   {n.href === 'team' && teamAlerts ? <span className="nav-n alert">{teamAlerts}</span> : null}
                 </a>
@@ -177,17 +178,17 @@ function OfficeShell({ onTechView }: { onTechView: () => void }) {
             <span className={'live-dot' + (live ? ' on' : '')} title={live ? 'Live updates on' : 'Connecting'} />
           </div>
           <div className="side-links" onClick={() => setMenu(false)}>
-            <button className="side-link" onClick={() => setAcct(true)}>Account</button>
-            <button className="side-link" onClick={onTechView}>Tech view</button>
-            <a className="side-link" href="#/system">System check</a>
-            <button className="side-link" onClick={() => sb.auth.signOut()}>Sign out</button>
+            <button className="side-link" onClick={() => setAcct(true)}><Icon name="user" size={16} />Account</button>
+            <button className="side-link" onClick={onTechView}><Icon name="tech" size={16} />Tech view</button>
+            <a className="side-link" href="#/system"><Icon name="system" size={16} />System</a>
+            <button className="side-link" onClick={() => sb.auth.signOut()}><Icon name="logout" size={16} />Sign out</button>
           </div>
         </div>
       </aside>
       <div className="topbar">
         <button className="btn ghost sm" onClick={() => setMenu(!menu)} aria-label="Menu">☰</button>
         <Brand tagline={false} />
-        <a className="btn gold sm" href="#/new">+ Job</a>
+        <a className="btn accent sm" href="#/new">+ Job</a>
       </div>
       <div className="scrim" onClick={() => setMenu(false)} />
       <main className="main">

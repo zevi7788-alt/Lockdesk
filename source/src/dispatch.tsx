@@ -10,6 +10,7 @@ import {
 import { col, get, schema, scanSchema, SPEC } from './db'
 import { PartsBadge, PartsPanel, PartsSetup } from './parts'
 import { SetupScript } from './setup'
+import { Icon } from './icons'
 import { BackupPanel, BackupReminder, ProblemReport, BUILD } from './backup'
 import { CustomerInvoices, JobInvoicePanel, invoicesEnabled } from './invoices'
 import { partsEnabled, partsState, approvalEnabled } from './model'
@@ -38,12 +39,12 @@ export function Dashboard() {
   const doneToday = jobs.filter((j) => j.status === 'completed' && j.completedAt && isToday(j.completedAt))
 
   const stats = [
-    { k: 'Open jobs', v: open.length, href: 'jobs' },
-    { k: 'Unassigned', v: open.filter((j) => !j.techId).length, href: 'jobs/filter/unassigned', warn: true },
-    { k: 'In the field', v: open.filter((j) => j.status === 'on_the_way' || j.status === 'arrived').length, href: 'jobs/filter/field' },
-    { k: 'Unpaid', v: unpaid.length, href: 'jobs/filter/unpaid', warn: true },
-    { k: 'Unpaid balance', v: money(unpaid.reduce((a, j) => a + (j.final || 0), 0)), href: 'jobs/filter/unpaid' },
-    { k: 'Completed today', v: doneToday.length, href: 'jobs/filter/completed' },
+    { k: 'Open jobs', v: open.length, href: 'jobs', icon: 'open', tone: 'blue' },
+    { k: 'Unassigned', v: open.filter((j) => !j.techId).length, href: 'jobs/filter/unassigned', warn: true, icon: 'alert', tone: 'orange' },
+    { k: 'In the field', v: open.filter((j) => j.status === 'on_the_way' || j.status === 'arrived').length, href: 'jobs/filter/field', icon: 'truck', tone: 'teal' },
+    { k: 'Unpaid', v: unpaid.length, href: 'jobs/filter/unpaid', warn: true, icon: 'invoices', tone: 'red' },
+    { k: 'Unpaid balance', v: money(unpaid.reduce((a, j) => a + (j.final || 0), 0)), href: 'jobs/filter/unpaid', icon: 'dollar', tone: 'purple' },
+    { k: 'Completed today', v: doneToday.length, href: 'jobs/filter/completed', icon: 'check', tone: 'green' },
   ]
 
   if (loading && !jobs.length) return <div className="page"><div className="loading">Loading jobs…</div></div>
@@ -66,9 +67,9 @@ export function Dashboard() {
       ) : null}
       <div className="stats">
         {stats.map((s) => (
-          <a key={s.k} href={'#/' + s.href} className={'stat' + (s.warn && s.v ? ' warn' : '')}>
-            <span className="stat-v mono">{s.v}</span>
-            <span className="stat-k">{s.k}</span>
+          <a key={s.k} href={'#/' + s.href} className={'stat tone-' + s.tone + (s.warn && s.v ? ' warn' : '')}>
+            <span className="stat-ic"><Icon name={s.icon} /></span>
+            <span className="stat-body"><span className="stat-v">{s.v}</span><span className="stat-k">{s.k}</span></span>
           </a>
         ))}
       </div>
