@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { useStore } from './store'
 import { Field, Modal } from './ui'
 import { Job, Part, PART_LABEL, addPart, deletePart, money, partsEnabled, partsState, updatePart } from './model'
-import { PARTS_SQL } from './partsSql'
+import { SetupScript } from './setup'
 
 export function PartsBadge({ jobId }: { jobId: string }) {
   const { partsFor } = useStore()
@@ -13,30 +13,7 @@ export function PartsBadge({ jobId }: { jobId: string }) {
 }
 
 export function PartsSetup({ compact }: { compact?: boolean }) {
-  const [shown, setShown] = useState(!compact)
-  const [copied, setCopied] = useState(false)
-  const copy = async () => {
-    try { await navigator.clipboard.writeText(PARTS_SQL); setCopied(true); setTimeout(() => setCopied(false), 2500) } catch {
-      const el = document.getElementById('parts-sql') as HTMLTextAreaElement | null
-      el?.select()
-    }
-  }
-  return (
-    <div className="setup">
-      <p className="small">Parts ordering needs a one time database update. It adds a parts table and does not change anything you already have.</p>
-      {shown ? (
-        <>
-          <ol className="small steps">
-            <li>Tap <strong>Copy setup script</strong>.</li>
-            <li>In Supabase, open <strong>SQL Editor</strong>, paste it, and tap <strong>Run</strong>.</li>
-            <li>Come back here and open <strong>System check</strong>, then <strong>Rescan database</strong>.</li>
-          </ol>
-          <button className="btn primary full" onClick={copy}>{copied ? 'Copied' : 'Copy setup script'}</button>
-          <textarea id="parts-sql" className="mono sql" readOnly rows={6} value={PARTS_SQL} onFocus={(e) => e.target.select()} />
-        </>
-      ) : <button className="btn full" onClick={() => setShown(true)}>Set up parts ordering</button>}
-    </div>
-  )
+  return <SetupScript compact={compact} intro="Parts ordering needs a one time database update. It only adds to your database and does not change anything you already have." />
 }
 
 function PartForm({ office, onSave, onClose }: { office: boolean; onSave: (p: any) => Promise<void>; onClose: () => void }) {

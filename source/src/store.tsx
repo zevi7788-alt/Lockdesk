@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { sb, col, schema } from './db'
-import { loadAll, loadParts, Job, Customer, Profile, Payment, Part, toProfile } from './model'
+import { loadAll, loadParts, loadAccountInfo, loadRequests, Job, Customer, Profile, Payment, Part, AccountInfo, AccessRequest, toProfile } from './model'
 
 type Store = {
   userId: string
@@ -12,6 +12,8 @@ type Store = {
   payments: Payment[]
   parts: Part[]
   partsFor: (jobId: string) => Part[]
+  accounts: Map<string, AccountInfo>
+  requests: AccessRequest[]
   techs: Profile[]
   loading: boolean
   error: string
@@ -25,7 +27,7 @@ const Ctx = createContext<Store>(null as any)
 export const useStore = () => useContext(Ctx)
 
 export function StoreProvider({ userId, email, children, onToast }: { userId: string; email: string; children: React.ReactNode; onToast: (m: string, k?: 'ok' | 'err') => void }) {
-  const [state, setState] = useState({ jobs: [] as Job[], customers: [] as Customer[], profiles: [] as Profile[], payments: [] as Payment[], parts: [] as Part[] })
+  const [state, setState] = useState({ jobs: [] as Job[], customers: [] as Customer[], profiles: [] as Profile[], payments: [] as Payment[], parts: [] as Part[], accounts: new Map<string, AccountInfo>(), requests: [] as AccessRequest[] })
   const [me, setMe] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -35,8 +37,10 @@ export function StoreProvider({ userId, email, children, onToast }: { userId: st
 
   const reload = useCallback(async () => {
     try {
-      const [base, parts] = await Promise.all([loadAll(), loadParts().catch(() => [])])
-      const data = { ...base, parts }
+      const [base, parts, accounts, requests] = await Promise.all([
+        loadAll(), loadParts().catch(() => []), loadAccountInfo().catch(() => new Map()), loadRequests().catch(() => []),
+      ])
+      const data = { ...base, parts, accounts, requests }
       setState(data)
       let mine = data.profiles.find((p) => p.id === userId) || null
       if (!mine) {
@@ -71,7 +75,7 @@ export function StoreProvider({ userId, email, children, onToast }: { userId: st
   useEffect(() => {
     reload()
     const ch = sb.channel('lockdesk-live')
-    for (const t of ['jobs', 'job_events', 'payments', 'customers', 'notifications', 'job_parts']) {
+    for (const t of ['jobs', 'job_events', 'payments', 'customers', 'notifications', 'job_parts', 'profiles', 'access_requests']) {
       if (schema.tables[t] === false) continue
       ch.on('postgres_changes', { event: '*', schema: 'public', table: t }, soon)
     }
@@ -87,7 +91,7 @@ export function StoreProvider({ userId, email, children, onToast }: { userId: st
     }
   }, [reload, soon])
 
-  const techs = state.profiles.filter((p) => p.role === 'technician')
+  const techs = state.profiles.filter((p) => p.role === 'technician' && p.approved)
   const techName = (id: string | null) => {
     if (!id) return 'Unassigned'
     return state.profiles.find((p) => p.id === id)?.name || 'Unknown technician'

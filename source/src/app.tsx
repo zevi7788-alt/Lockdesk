@@ -3,7 +3,10 @@ import { createRoot } from 'react-dom/client'
 import { initClient, sb, scanSchema, errText } from './db'
 import { StoreProvider, useStore } from './store'
 import { go, useRoute } from './ui'
-import { Calendar, CustomerDetail, Customers, Dashboard, JobDetail, JobsList, Reports, SystemCheck, Team } from './dispatch'
+import { Calendar, CustomerDetail, Customers, Dashboard, JobDetail, JobsList, Reports, SystemCheck } from './dispatch'
+import { Team, useTeamAlerts } from './team'
+import { AccountModal, PendingScreen } from './account'
+import { requestPasswordReset } from './model'
 import { JobFormPage } from './jobform'
 import { TechHome, TechJob } from './tech'
 
@@ -31,11 +34,12 @@ function Login() {
           options: { data: { full_name: name.trim(), name: name.trim() }, emailRedirectTo: location.origin + location.pathname },
         })
         if (error) throw error
-        if (!data.session) setMsg('Account created. Check your email to confirm, then sign in.')
+        if (!data.session) setMsg('Request sent. The owner has to approve your account before you can sign in.')
       } else {
-        const { error } = await sb.auth.resetPasswordForEmail(email.trim(), { redirectTo: location.origin + location.pathname })
-        if (error) throw error
-        setMsg('If that email has an account, a reset link is on its way.')
+        const how = await requestPasswordReset(email)
+        setMsg(how === 'owner'
+          ? 'Request sent to the owner. They will set a temporary password and send it to you.'
+          : 'If that email has an account, a reset link is on its way.')
       }
     } catch (e: any) {
       setErr(errText(e))
@@ -46,21 +50,21 @@ function Login() {
     <div className="login">
       <form className="login-card" onSubmit={submit}>
         <div className="brand big"><Mark /> LockDesk</div>
-        <p className="muted">{mode === 'in' ? 'Sign in to dispatch' : mode === 'up' ? 'Create your account' : 'Reset your password'}</p>
+        <p className="muted">{mode === 'in' ? 'Sign in to dispatch' : mode === 'up' ? 'Request access. The owner approves every account.' : 'Forgot your password? The owner will reset it for you.'}</p>
         {mode === 'up' ? (
           <label className="field"><span className="flabel">Full name</span><input id="lg-name" value={name} onChange={(e) => setName(e.target.value)} required autoComplete="name" /></label>
         ) : null}
         <label className="field"><span className="flabel">Email</span><input id="lg-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" /></label>
         {mode !== 'reset' ? (
-          <label className="field"><span className="flabel">Password</span><input id="lg-pw" type="password" value={pw} onChange={(e) => setPw(e.target.value)} required minLength={6} autoComplete={mode === 'in' ? 'current-password' : 'new-password'} /></label>
+          <label className="field"><span className="flabel">Password</span><input id="lg-pw" type="password" value={pw} onChange={(e) => setPw(e.target.value)} required minLength={mode === 'up' ? 8 : 6} autoComplete={mode === 'in' ? 'current-password' : 'new-password'} /></label>
         ) : null}
         {err ? <div className="alert err">{err}</div> : null}
         {msg ? <div className="alert ok">{msg}</div> : null}
-        <button className="btn primary full big" disabled={busy}>{busy ? 'One moment…' : mode === 'in' ? 'Sign in' : mode === 'up' ? 'Create account' : 'Send reset link'}</button>
+        <button className="btn primary full big" disabled={busy}>{busy ? 'One moment…' : mode === 'in' ? 'Sign in' : mode === 'up' ? 'Request access' : 'Ask the owner to reset it'}</button>
         <div className="login-links">
           {mode !== 'in' ? <button type="button" className="link" onClick={() => setMode('in')}>Back to sign in</button> : (
             <>
-              <button type="button" className="link" onClick={() => setMode('up')}>Create account</button>
+              <button type="button" className="link" onClick={() => setMode('up')}>Request access</button>
               <button type="button" className="link" onClick={() => setMode('reset')}>Forgot password</button>
             </>
           )}
@@ -117,6 +121,8 @@ function OfficeShell({ onTechView }: { onTechView: () => void }) {
   const r = useRoute()
   const { me, email, error, live, jobs } = useStore()
   const [menu, setMenu] = useState(false)
+  const [acct, setAcct] = useState(false)
+  const teamAlerts = useTeamAlerts()
   const unpaid = jobs.filter((j) => j.status === 'completed' && j.payStatus !== 'paid' && j.payStatus !== 'voided' && j.payStatus !== 'refunded').length
 
   let page: React.ReactNode
@@ -142,6 +148,7 @@ function OfficeShell({ onTechView }: { onTechView: () => void }) {
             <a key={n.href} href={'#/' + n.href} className={n.match(r) ? 'on' : ''}>
               {n.label}
               {n.href === 'jobs' && unpaid ? <span className="nav-n">{unpaid}</span> : null}
+              {n.href === 'team' && teamAlerts ? <span className="nav-n alert">{teamAlerts}</span> : null}
             </a>
           ))}
         </nav>
@@ -150,6 +157,7 @@ function OfficeShell({ onTechView }: { onTechView: () => void }) {
           <div className={'live' + (live ? ' on' : '')}>{live ? 'Live' : 'Connecting'}</div>
           <button className="link small" onClick={onTechView}>Technician view</button>
           <a className="link small" href="#/system" onClick={() => setMenu(false)}>System check</a>
+          <button className="link small" onClick={() => { setMenu(false); setAcct(true) }}>Account</button>
           <button className="link small" onClick={() => sb.auth.signOut()}>Sign out</button>
         </div>
       </aside>
@@ -164,6 +172,7 @@ function OfficeShell({ onTechView }: { onTechView: () => void }) {
         {me === null && !error ? null : null}
         {page}
       </main>
+      {acct ? <AccountModal onClose={() => setAcct(false)} /> : null}
     </div>
   )
 }
@@ -190,6 +199,7 @@ function EditJobRoute({ id }: { id: string }) {
 function TechShell({ canSwitch, onOffice }: { canSwitch: boolean; onOffice: () => void }) {
   const r = useRoute()
   const { live, me } = useStore()
+  const [acct, setAcct] = useState(false)
   const jobId = r[0] === 'job' ? r[1] : null
   return (
     <div className="tech-shell">
@@ -198,9 +208,10 @@ function TechShell({ canSwitch, onOffice }: { canSwitch: boolean; onOffice: () =
         <div className="tech-top-r">
           <span className={'live' + (live ? ' on' : '')}>{live ? 'Live' : '…'}</span>
           {canSwitch ? <button className="btn ghost sm" onClick={onOffice}>Office</button> : null}
-          <button className="btn ghost sm" onClick={() => sb.auth.signOut()}>Sign out</button>
+          <button className="btn ghost sm" onClick={() => setAcct(true)}>Account</button>
         </div>
       </header>
+      {acct ? <AccountModal onClose={() => setAcct(false)} /> : null}
       {me && me.role !== 'technician' && !canSwitch ? null : null}
       {jobId ? <TechJob id={jobId} back={() => go('')} /> : <TechHome openJob={(id) => go('job/' + id)} />}
     </div>
@@ -224,6 +235,7 @@ function Router() {
       </div></div>
     )
   }
+  if (!me.approved) return <PendingScreen mark={<Mark />} />
   if (me.role === 'technician') return <TechShell canSwitch={false} onOffice={() => {}} />
   if (techView) return <TechShell canSwitch onOffice={() => setTV(false)} />
   return <OfficeShell onTechView={() => setTV(true)} />

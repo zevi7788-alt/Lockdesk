@@ -362,3 +362,20 @@ legend { padding: 0 6px; font-size: 13px; font-weight: 600; text-transform: uppe
 .tj-parts { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
 .tj-sec { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-3); font-weight: 600; }
 @media (max-width: 760px) { .part { flex-direction: column; } .part-side { align-items: flex-start; } .part-actions { justify-content: flex-start; } }
+
+/* Accounts and approval */
+.nav-n.alert { background: var(--red); color: #fff; }
+.warn-panel { border-color: var(--amber); background: var(--amber-bg); }
+.warn-panel h3 { color: var(--amber); }
+.warn-panel .small { color: var(--ink); }
+.list-row.stack { flex-wrap: wrap; }
+.row-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.row-actions select { width: auto; min-width: 130px; }
+.btn.danger { background: var(--red); border-color: var(--red); color: #fff; }
+.danger-link { color: var(--red); align-self: flex-start; }
+.danger-box { display: flex; flex-direction: column; gap: 10px; padding: 12px; border: 1px solid var(--red); border-radius: 8px; background: var(--red-bg); }
+.danger-box p { margin: 0; color: var(--ink); }
+.divider { height: 1px; background: var(--line); margin: 4px 0; }
+.cred { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border-radius: 8px; background: var(--surface-2); font-size: 16px; user-select: all; }
+.pending-h { font-size: 20px; text-transform: none; letter-spacing: -0.01em; color: var(--ink); }
+@media (max-width: 760px) { .row-actions { justify-content: flex-start; width: 100%; } .row-actions select { flex: 1; } }

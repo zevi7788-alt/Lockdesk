@@ -1,4 +1,4 @@
-import { sb, col, get, put, getAmt, putAmt, has, schema, errText } from './db'
+import { sb, col, get, put, getAmt, putAmt, has, schema, errText, SUPABASE_URL, SUPABASE_KEY } from './db'
 
 export type Role = 'owner' | 'dispatcher' | 'technician'
 export type Status = 'new' | 'scheduled' | 'assigned' | 'on_the_way' | 'arrived' | 'completed' | 'cancelled'
@@ -24,7 +24,7 @@ export const PAY_LABEL: Record<string, string> = {
   credit_card: 'Credit card', cash: 'Cash', zelle: 'Zelle', check: 'Check', other: 'Other',
 }
 
-export type Profile = { id: string; name: string; role: Role; phone: string; email: string; raw: any }
+export type Profile = { id: string; name: string; role: Role; phone: string; email: string; approved: boolean; raw: any }
 export type Customer = {
   id: string; name: string; phone: string; email: string; address: string; city: string; state: string; zip: string; notes: string; raw: any
 }
@@ -50,6 +50,8 @@ export function toProfile(r: any): Profile {
     role: (s(get(r, 'profiles', 'role')) || 'dispatcher') as Role,
     phone: s(get(r, 'profiles', 'phone')),
     email: s(get(r, 'profiles', 'email')),
+    // When the approval update isn't installed yet, everyone counts as approved
+    approved: has('profiles', 'approved') ? get(r, 'profiles', 'approved') === true : true,
     raw: r,
   }
 }
@@ -549,4 +551,92 @@ export function partsState(parts: Part[]): PartStatus | null {
   if (!open.length) return null
   for (const st of ['needed', 'ordered', 'received'] as PartStatus[]) if (open.some((p) => p.status === st)) return st
   return 'installed'
+}
+
+
+// ---------- Accounts and approval ----------
+
+export const approvalEnabled = () => has('profiles', 'approved')
+
+export type AccountInfo = { id: string; email: string; createdAt: Date | null; lastSignIn: Date | null; removed: boolean }
+export type AccessRequest = { id: string; kind: string; email: string; userId: string; status: string; createdAt: Date | null }
+
+export async function loadAccountInfo(): Promise<Map<string, AccountInfo>> {
+  const m = new Map<string, AccountInfo>()
+  if (!approvalEnabled()) return m
+  const { data, error } = await sb.rpc('ld_account_emails')
+  if (error || !data) return m
+  for (const r of data) m.set(r.id, { id: r.id, email: r.email || '', createdAt: d(r.created_at), lastSignIn: d(r.last_sign_in_at), removed: !!r.removed })
+  return m
+}
+
+export async function loadRequests(): Promise<AccessRequest[]> {
+  if (schema.tables.access_requests !== true) return []
+  const { data, error } = await sb.from('access_requests').select('*').eq('status', 'open').order('created_at', { ascending: false })
+  if (error || !data) return []
+  return data.map((r: any) => ({ id: s(r.id), kind: s(r.kind), email: s(r.email), userId: s(r.user_id), status: s(r.status), createdAt: d(r.created_at) }))
+}
+
+const rpc = async (fn: string, args?: any) => {
+  const { data, error } = await sb.rpc(fn, args)
+  if (error) throw new Error(errText(error))
+  return data
+}
+
+export const approveUser = (id: string, role: Role) => rpc('ld_approve_user', { p_user: id, p_role: role })
+export const removeUser = (id: string) => rpc('ld_remove_user', { p_user: id })
+export const setUserPassword = (id: string, pw: string) => rpc('ld_set_user_password', { p_user: id, p_password: pw })
+export const deleteMyAccount = () => rpc('ld_delete_my_account')
+export async function dismissRequest(id: string) {
+  const { error } = await sb.from('access_requests').update({ status: 'dismissed', handled_at: new Date().toISOString() }).eq('id', id)
+  if (error) throw new Error(errText(error))
+}
+
+// Ask the owner for a password reset. Falls back to a normal reset email
+// if the security update hasn't been installed yet.
+export async function requestPasswordReset(email: string): Promise<'owner' | 'email'> {
+  const { error } = await sb.rpc('ld_request_password_reset', { p_email: email.trim() })
+  if (!error) return 'owner'
+  const missing = error.code === 'PGRST202' || /could not find the function/i.test(String(error.message))
+  if (!missing) throw new Error(errText(error))
+  const r = await sb.auth.resetPasswordForEmail(email.trim(), { redirectTo: location.origin + location.pathname })
+  if (r.error) throw new Error(errText(r.error))
+  return 'email'
+}
+
+export function tempPassword() {
+  const words = ['Brass', 'Bolt', 'Key', 'Latch', 'Tumbler', 'Pin', 'Cam', 'Strike', 'Mortise', 'Cylinder']
+  const a = new Uint32Array(3)
+  crypto.getRandomValues(a)
+  return words[a[0] % words.length] + words[a[1] % words.length] + String(1000 + (a[2] % 9000))
+}
+
+// The owner adds someone directly. Uses a throwaway client so the owner stays signed in.
+export async function createMember(p: { name: string; email: string; password: string; role: Role }) {
+  if (!p.name.trim() || !p.email.trim()) throw new Error('Enter a name and email.')
+  if (p.password.length < 8) throw new Error('Password must be at least 8 characters.')
+  const tmp = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false, storageKey: 'lockdesk-add-member' },
+  })
+  const { data, error } = await tmp.auth.signUp({
+    email: p.email.trim(), password: p.password,
+    options: { data: { full_name: p.name.trim(), name: p.name.trim() } },
+  })
+  if (error) {
+    if (/confirmation email|sending.*email/i.test(String(error.message)))
+      throw new Error('Supabase could not send its confirmation email. In Supabase, turn off "Confirm email" (Authentication, Sign In / Providers, Email). Owner approval replaces it.')
+    throw new Error(errText(error))
+  }
+  const user = data?.user
+  if (!user || (Array.isArray(user.identities) && user.identities.length === 0)) throw new Error('That email already has an account. Find it in the list and approve it there.')
+  try { await tmp.auth.signOut() } catch {}
+  // Give the database a moment to create the profile row
+  for (let i = 0; i < 6; i++) {
+    try { await approveUser(user.id, p.role); break } catch (e: any) {
+      if (i === 5 || !/not found/i.test(e.message)) throw e
+      await new Promise((r) => setTimeout(r, 500))
+    }
+  }
+  try { await updateMyProfile(user.id, { name: p.name.trim() }) } catch {}
+  return user.id
 }

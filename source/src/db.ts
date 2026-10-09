@@ -28,6 +28,7 @@ export const SPEC: Record<string, Record<string, string[]>> = {
     phone: ['phone', 'phone_number'],
     email: ['email'],
     active: ['is_active', 'active'],
+    approved: ['approved'],
   },
   customers: {
     id: ['id'],
@@ -122,6 +123,10 @@ export const SPEC: Record<string, Record<string, string[]>> = {
     id: ['id'],
     job_id: ['job_id'],
   },
+  access_requests: {
+    id: ['id'],
+    email: ['email'],
+  },
   job_parts: {
     id: ['id'],
     job_id: ['job_id'],
@@ -148,7 +153,7 @@ export type Schema = {
   scannedAt: string
 }
 
-const SCHEMA_KEY = 'lockdesk.schema.v4'
+const SCHEMA_KEY = 'lockdesk.schema.v5'
 export let schema: Schema = { version: 3, tables: {}, cols: {}, allCols: {}, scannedAt: '' }
 
 function missingColumn(err: any) {

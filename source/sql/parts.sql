@@ -1,8 +1,4 @@
-// One time database update that adds parts tracking.
-// It only ADDS a table. It does not touch existing tables, data or policies.
-// Access is tied to the existing jobs security: a person can see and edit a
-// job's parts only if your existing jobs rules already let them see that job.
-export const PARTS_SQL = `-- LockDesk: add parts ordering (safe to run more than once)
+-- LockDesk: add parts ordering (safe to run more than once)
 do $$
 declare job_id_type text;
 begin
@@ -58,4 +54,3 @@ begin
   alter publication supabase_realtime add table public.job_parts;
 exception when duplicate_object then null;
 end $$;
-`

@@ -2,13 +2,14 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { useStore } from './store'
 import { Empty, Field, JobCard, KV, Modal, PayBadge, PriorityBadge, Section, StatusBadge, go } from './ui'
 import {
-  ACTIVE, Job, JobEvent, PAY_LABEL, PAY_METHODS, PayMethod, STATUSES, STATUS_LABEL, Role,
+  ACTIVE, Job, JobEvent, PAY_LABEL, PAY_METHODS, PayMethod, STATUSES, STATUS_LABEL,
   fmtDateTime, fmtTime, fmtWhen, isToday, loadEvents, loadNotifications, mapsHref, money, recordPayment,
-  setPayStatus, setRole, setStatus, telHref, titleCase, todayISO, updateJob, saveCustomer, Status, Customer,
+  setPayStatus, setStatus, telHref, titleCase, todayISO, updateJob, saveCustomer, Status, Customer,
 } from './model'
 import { col, get, schema, scanSchema, SPEC } from './db'
 import { PartsBadge, PartsPanel, PartsSetup } from './parts'
-import { partsEnabled, partsState } from './model'
+import { SetupScript } from './setup'
+import { partsEnabled, partsState, approvalEnabled } from './model'
 
 const PRI_RANK: Record<string, number> = { emergency: 0, high: 1, normal: 2, low: 3 }
 const byUrgency = (a: Job, b: Job) =>
@@ -17,7 +18,7 @@ const byUrgency = (a: Job, b: Job) =>
 // ---------------- Dashboard ----------------
 
 export function Dashboard() {
-  const { jobs, loading, partsFor } = useStore()
+  const { jobs, loading, partsFor, me } = useStore()
   const open = jobs.filter((j) => ACTIVE.includes(j.status))
   const urgent = open.filter((j) => j.priority === 'emergency' || j.priority === 'high').sort(byUrgency)
   const unassigned = open.filter((j) => !j.techId && !urgent.includes(j)).sort(byUrgency)
@@ -50,6 +51,12 @@ export function Dashboard() {
         <h1>Dispatch</h1>
         <a className="btn primary" href="#/new">+ New job</a>
       </div>
+      {!approvalEnabled() && me?.role === 'owner' ? (
+        <div className="panel warn-panel">
+          <h3>Security update needed</h3>
+          <SetupScript compact intro={<>Right now anyone who creates an account can see your jobs and customers. This one time update makes every new account wait for your approval.</>} />
+        </div>
+      ) : null}
       <div className="stats">
         {stats.map((s) => (
           <a key={s.k} href={'#/' + s.href} className={'stat' + (s.warn && s.v ? ' warn' : '')}>
@@ -613,38 +620,6 @@ export function Reports() {
   )
 }
 
-// ---------------- Team ----------------
-
-export function Team() {
-  const { profiles, me, toast, reload } = useStore()
-  const canEdit = me?.role === 'owner' || me?.role === 'dispatcher'
-  const change = async (p: any, role: Role) => {
-    try { await setRole(p, role); toast(`${p.name} is now ${titleCase(role)}`); await reload() } catch (e: any) { toast(e.message, 'err') }
-  }
-  return (
-    <div className="page">
-      <div className="page-head"><h1>Team</h1></div>
-      <div className="panel">
-        <p className="small">To add someone, have them open LockDesk and choose <strong>Create account</strong>. They join as a Dispatcher. Set locksmiths to Technician here.</p>
-      </div>
-      <div className="list">
-        {profiles.map((p) => (
-          <div key={p.id} className="list-row static">
-            <div><strong>{p.name}</strong>{p.id === me?.id ? <span className="muted"> (you)</span> : null}<div className="sub">{[p.email, p.phone].filter(Boolean).join(' · ')}</div></div>
-            <div className="r">
-              {canEdit && p.id !== me?.id ? (
-                <select id={'role-' + p.id} value={p.role} onChange={(e) => change(p, e.target.value as Role)}>
-                  {(me?.role === 'owner' ? ['owner', 'dispatcher', 'technician'] : ['dispatcher', 'technician']).map((r) => <option key={r} value={r}>{titleCase(r)}</option>)}
-                </select>
-              ) : <span className={'badge role-' + p.role}>{titleCase(p.role)}</span>}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
 // ---------------- System check ----------------
 
 export function SystemCheck() {
@@ -660,11 +635,13 @@ export function SystemCheck() {
       <div className="panel">
         <KV k="Realtime" v={live ? 'Connected' : 'Not connected (refreshing every 60 seconds)'} />
         <KV k="Last scan" v={schema.scannedAt ? new Date(schema.scannedAt).toLocaleString() : ''} />
+        <KV k="Account approval" v={approvalEnabled() ? 'On. Every new account needs owner approval.' : 'Off. Run the update below.'} />
+        <KV k="Parts ordering" v={partsEnabled() ? 'On' : 'Off. Run the update below.'} />
         <KV k="SMS" v="Not connected. Texts are queued only." />
         <KV k="Card processing" v="Not connected. Payments are recorded manually." />
         {error ? <div className="alert err">{error}</div> : null}
       </div>
-      {!partsEnabled() ? <div className="panel"><h3>Parts ordering</h3><PartsSetup /></div> : null}
+      {!partsEnabled() || !approvalEnabled() ? <div className="panel warn-panel"><h3>Database update</h3><SetupScript intro="Turns on owner approval for every account, owner managed password resets, and parts ordering. It only adds to your database and is safe to run more than once." /></div> : null}
       <p className="muted small">LockDesk detects your database columns automatically. If something looks wrong, screenshot this page and send it over.</p>
       <div className="report-grid">
         {Object.keys(SPEC).map((t) => (
