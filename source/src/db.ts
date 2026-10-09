@@ -272,3 +272,19 @@ export function errText(e: any): string {
   const parts = [e.message, e.details, e.hint].filter(Boolean)
   return parts.join(' ') || JSON.stringify(e)
 }
+
+// Supabase returns at most 1,000 rows per request, so read in pages until everything is in.
+export async function fetchAll(table: string, opts: { order?: string | null; ascending?: boolean; max?: number } = {}): Promise<any[]> {
+  const page = 1000
+  const max = opts.max ?? 100000
+  const out: any[] = []
+  for (let from = 0; from < max; from += page) {
+    let q = sb.from(table).select('*').range(from, from + page - 1)
+    if (opts.order) q = q.order(opts.order, { ascending: !!opts.ascending })
+    const { data, error } = await q
+    if (error) throw new Error(`${table}: ${errText(error)}`)
+    out.push(...(data || []))
+    if (!data || data.length < page) break
+  }
+  return out
+}

@@ -1,4 +1,4 @@
-import { sb, col, get, put, getAmt, putAmt, has, schema, errText, SUPABASE_URL, SUPABASE_KEY } from './db'
+import { sb, col, get, put, getAmt, putAmt, has, schema, errText, SUPABASE_URL, SUPABASE_KEY, fetchAll } from './db'
 
 export type Role = 'owner' | 'dispatcher' | 'technician'
 export type Status = 'new' | 'scheduled' | 'assigned' | 'on_the_way' | 'arrived' | 'completed' | 'cancelled'
@@ -171,22 +171,17 @@ export function toEvent(r: any): JobEvent {
 
 // ---------- Loading ----------
 
-async function selectAll(table: string, orderField?: string, limit = 1000) {
+async function selectAll(table: string, orderField?: string) {
   if (schema.tables[table] === false) return []
-  let q = sb.from(table).select('*').limit(limit)
-  const oc = orderField ? col(table, orderField) : null
-  if (oc) q = q.order(oc, { ascending: false })
-  const { data, error } = await q
-  if (error) throw new Error(`${table}: ${errText(error)}`)
-  return data || []
+  return fetchAll(table, { order: orderField ? col(table, orderField) : null })
 }
 
 export async function loadAll() {
   const [pr, cu, jo, pa] = await Promise.all([
     selectAll('profiles'),
-    selectAll('customers', 'created_at', 5000),
-    selectAll('jobs', 'created_at', 2000),
-    selectAll('payments', 'at', 5000).catch(() => []),
+    selectAll('customers', 'created_at'),
+    selectAll('jobs', 'created_at'),
+    selectAll('payments', 'at').catch(() => []),
   ])
   const profiles = pr.map(toProfile)
   const customers = cu.map(toCustomer)
@@ -518,9 +513,7 @@ export function toPart(r: any): Part {
 
 export async function loadParts(): Promise<Part[]> {
   if (!partsEnabled()) return []
-  const { data, error } = await sb.from('job_parts').select('*').order('created_at', { ascending: true }).limit(5000)
-  if (error) return []
-  return (data || []).map(toPart)
+  try { return (await fetchAll('job_parts', { order: 'created_at', ascending: true })).map(toPart) } catch { return [] }
 }
 
 export async function addPart(jobId: string, p: { name: string; quantity: number; partNumber: string; notes: string; supplier?: string; cost?: number | null }) {

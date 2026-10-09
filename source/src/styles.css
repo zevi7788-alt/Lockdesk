@@ -435,3 +435,7 @@ legend { padding: 0 6px; font-size: 13px; font-weight: 600; text-transform: uppe
   .inv-page { padding: 0; background: #fff; }
   .invoice-doc { border: 0; max-width: none; padding: 0; }
 }
+
+/* Backup reminder */
+.reminder { display: flex; flex-direction: column; gap: 2px; padding: 12px 16px; border-radius: var(--r); border: 1px solid var(--st-new); background: var(--st-new-bg); color: var(--st-new); }
+.reminder span { font-size: 13px; color: var(--ink-2); }

@@ -9,6 +9,7 @@ import {
 import { col, get, schema, scanSchema, SPEC } from './db'
 import { PartsBadge, PartsPanel, PartsSetup } from './parts'
 import { SetupScript } from './setup'
+import { BackupPanel, BackupReminder, ProblemReport, BUILD } from './backup'
 import { CustomerInvoices, JobInvoicePanel, invoicesEnabled } from './invoices'
 import { partsEnabled, partsState, approvalEnabled } from './model'
 
@@ -52,6 +53,7 @@ export function Dashboard() {
         <h1>Dispatch</h1>
         <a className="btn primary" href="#/new">+ New job</a>
       </div>
+      <BackupReminder />
       {!approvalEnabled() && me?.role === 'owner' ? (
         <div className="panel warn-panel">
           <h3>Security update needed</h3>
@@ -632,7 +634,7 @@ export function Reports() {
 // ---------------- System check ----------------
 
 export function SystemCheck() {
-  const { reload, live, error } = useStore()
+  const { reload, live, error, me } = useStore()
   const [, force] = useState(0)
   const [busy, setBusy] = useState(false)
   return (
@@ -641,7 +643,12 @@ export function SystemCheck() {
         <h1>System check</h1>
         <button className="btn" disabled={busy} onClick={async () => { setBusy(true); try { await scanSchema(true); await reload(); force((x) => x + 1) } finally { setBusy(false) } }}>{busy ? 'Scanning…' : 'Rescan database'}</button>
       </div>
+      <div className="report-grid">
+        {me?.role === 'owner' ? <BackupPanel /> : null}
+        <ProblemReport />
+      </div>
       <div className="panel">
+        <KV k="App version" v={BUILD} mono />
         <KV k="Realtime" v={live ? 'Connected' : 'Not connected (refreshing every 60 seconds)'} />
         <KV k="Last scan" v={schema.scannedAt ? new Date(schema.scannedAt).toLocaleString() : ''} />
         <KV k="Account approval" v={approvalEnabled() ? 'On. Every new account needs owner approval.' : 'Off. Run the update below.'} />

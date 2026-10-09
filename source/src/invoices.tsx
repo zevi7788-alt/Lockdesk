@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { sb, schema, errText } from './db'
+import { sb, schema, errText, fetchAll } from './db'
 import { useStore } from './store'
 import { Empty, Field, KV, Modal, go } from './ui'
 import { SetupScript } from './setup'
@@ -51,9 +51,7 @@ function toCompany(r: any): Company {
 export async function loadInvoices(): Promise<Invoice[]> {
   if (!invoicesEnabled()) return []
   try { await sb.rpc('ld_refresh_email_status') } catch {}
-  const { data, error } = await sb.from('invoices').select('*').order('issued_at', { ascending: false }).limit(5000)
-  if (error || !data) return []
-  return data.map(toInvoice)
+  try { return (await fetchAll('invoices', { order: 'issued_at' })).map(toInvoice) } catch { return [] }
 }
 export async function loadCompany(): Promise<{ company: Company | null; emailReady: boolean }> {
   if (!invoicesEnabled()) return { company: null, emailReady: false }

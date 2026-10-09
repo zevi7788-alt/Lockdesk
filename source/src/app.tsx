@@ -8,6 +8,7 @@ import { Team, useTeamAlerts } from './team'
 import { AccountModal, PendingScreen } from './account'
 import { requestPasswordReset } from './model'
 import { InstallHint } from './install'
+import { logError } from './backup'
 import { InvoiceDetail, InvoicesPage, PublicInvoice, SettingsPage } from './invoices'
 import { JobFormPage } from './jobform'
 import { TechHome, TechJob } from './tech'
@@ -261,6 +262,7 @@ function App() {
   const [toasts, setToasts] = useState<Toast[]>([])
 
   const toast = useCallback((msg: string, kind: 'ok' | 'err' = 'ok') => {
+    if (kind === 'err') logError(msg)
     const id = Date.now() + Math.random()
     setToasts((t) => [...t, { id, msg, kind }])
     setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), kind === 'err' ? 7000 : 3200)
