@@ -1,7 +1,8 @@
+import { APP_NAME } from './brand'
 import React, { useState } from 'react'
 import { sb, errText } from './db'
 import { useStore } from './store'
-import { Field, Modal } from './ui'
+import { Brand, Field, Modal } from './ui'
 import { approvalEnabled, deleteMyAccount, titleCase, updateMyProfile } from './model'
 
 export function AccountModal({ onClose }: { onClose: () => void }) {
@@ -47,7 +48,7 @@ export function AccountModal({ onClose }: { onClose: () => void }) {
           <button className="link small danger-link" onClick={() => setDelStep(1)}>Delete my account</button>
         ) : (
           <div className="danger-box">
-            <p className="small">This permanently deletes your LockDesk login. Jobs you worked on stay in the company records. Type <strong>DELETE</strong> to confirm.</p>
+            <p className="small">This permanently deletes your {APP_NAME} login. Jobs you worked on stay in the company records. Type <strong>DELETE</strong> to confirm.</p>
             <input id="ac-del" value={delText} onChange={(e) => setDelText(e.target.value)} autoCapitalize="characters" />
             <button className="btn danger full" disabled={busy || delText.trim().toUpperCase() !== 'DELETE'} onClick={async () => {
               setBusy(true); setErr('')
@@ -68,7 +69,7 @@ export function PendingScreen({ mark }: { mark: React.ReactNode }) {
   return (
     <div className="login">
       <div className="login-card">
-        <div className="brand big">{mark} LockDesk</div>
+        <Brand big mark={mark} />
         <h2 className="pending-h">Waiting for approval</h2>
         <p>Thanks{me?.name && me.name !== email ? `, ${me.name.split(' ')[0]}` : ''}. Your account ({email}) was sent to the owner. You'll get access as soon as they approve it.</p>
         <button className="btn primary full big" disabled={checking} onClick={async () => { setChecking(true); await reload(); setChecking(false) }}>{checking ? 'Checking…' : 'Check again'}</button>

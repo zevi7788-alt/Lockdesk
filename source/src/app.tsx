@@ -1,8 +1,9 @@
+import { APP_NAME } from './brand'
 import React, { useCallback, useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { initClient, sb, scanSchema, errText } from './db'
 import { StoreProvider, useStore } from './store'
-import { go, useRoute } from './ui'
+import { go, useRoute, Brand, Mark } from './ui'
 import { Calendar, CustomerDetail, Customers, Dashboard, JobDetail, JobsList, Reports, SystemCheck } from './dispatch'
 import { Team, useTeamAlerts } from './team'
 import { AccountModal, PendingScreen } from './account'
@@ -50,10 +51,18 @@ function Login() {
   }
 
   return (
-    <div className="login">
+    <div className="login split">
+      <aside className="login-art" aria-hidden="true">
+        <Brand big />
+        <div className="login-art-foot">
+          <p>Dispatch, field work, invoices and payments in one place.</p>
+          <span>Authorized staff only</span>
+        </div>
+      </aside>
       <form className="login-card" onSubmit={submit}>
-        <div className="brand big"><Mark /> LockDesk</div>
-        <p className="muted">{mode === 'in' ? 'Sign in to dispatch' : mode === 'up' ? 'Request access. The owner approves every account.' : 'Forgot your password? The owner will reset it for you.'}</p>
+        <Brand big />
+        <h1 className="login-h">{mode === 'in' ? 'Sign in' : mode === 'up' ? 'Request access' : 'Reset password'}</h1>
+        <p className="muted">{mode === 'in' ? 'Welcome back. Enter your details to continue.' : mode === 'up' ? 'Request access. The owner approves every account.' : 'Forgot your password? The owner will reset it for you.'}</p>
         {mode === 'up' ? (
           <label className="field"><span className="flabel">Full name</span><input id="lg-name" value={name} onChange={(e) => setName(e.target.value)} required autoComplete="name" /></label>
         ) : null}
@@ -88,7 +97,7 @@ function NewPassword({ done }: { done: () => void }) {
         const { error } = await sb.auth.updateUser({ password: pw })
         if (error) setErr(errText(error)); else done()
       }}>
-        <div className="brand big"><Mark /> LockDesk</div>
+        <Brand big />
         <p className="muted">Choose a new password</p>
         <label className="field"><span className="flabel">New password</span><input id="np-pw" type="password" minLength={6} required value={pw} onChange={(e) => setPw(e.target.value)} /></label>
         {err ? <div className="alert err">{err}</div> : null}
@@ -98,28 +107,23 @@ function NewPassword({ done }: { done: () => void }) {
   )
 }
 
-function Mark() {
-  return (
-    <svg className="mark" viewBox="0 0 24 24" aria-hidden="true">
-      <rect x="3" y="10" width="18" height="12" rx="2" fill="currentColor" />
-      <path d="M7 10V7a5 5 0 0 1 10 0v3" stroke="currentColor" strokeWidth="2.4" fill="none" />
-      <circle cx="12" cy="15.5" r="1.8" fill="var(--bg)" />
-      <rect x="11.2" y="16" width="1.6" height="3.4" fill="var(--bg)" />
-    </svg>
-  )
-}
-
 // ---------------- Shells ----------------
 
-const NAV = [
-  { href: '', label: 'Dispatch', match: (r: string[]) => r.length === 0 },
-  { href: 'new', label: 'New job', match: (r: string[]) => r[0] === 'new' },
-  { href: 'jobs', label: 'Jobs', match: (r: string[]) => r[0] === 'jobs' },
-  { href: 'calendar', label: 'Calendar', match: (r: string[]) => r[0] === 'calendar' },
-  { href: 'customers', label: 'Customers', match: (r: string[]) => r[0] === 'customers' },
-  { href: 'invoices', label: 'Invoices', match: (r: string[]) => r[0] === 'invoices' || r[0] === 'settings' },
-  { href: 'reports', label: 'Reports', match: (r: string[]) => r[0] === 'reports' },
-  { href: 'team', label: 'Team', match: (r: string[]) => r[0] === 'team' },
+const NAV: { group: string; items: { href: string; label: string; match: (r: string[]) => boolean }[] }[] = [
+  { group: 'Operations', items: [
+    { href: '', label: 'Dispatch', match: (r) => r.length === 0 },
+    { href: 'new', label: 'New job', match: (r) => r[0] === 'new' },
+    { href: 'jobs', label: 'Jobs', match: (r) => r[0] === 'jobs' },
+    { href: 'calendar', label: 'Calendar', match: (r) => r[0] === 'calendar' },
+  ] },
+  { group: 'Records', items: [
+    { href: 'customers', label: 'Customers', match: (r) => r[0] === 'customers' },
+    { href: 'invoices', label: 'Invoices', match: (r) => r[0] === 'invoices' || r[0] === 'settings' },
+  ] },
+  { group: 'Business', items: [
+    { href: 'reports', label: 'Reports', match: (r) => r[0] === 'reports' },
+    { href: 'team', label: 'Team', match: (r) => r[0] === 'team' },
+  ] },
 ]
 
 function OfficeShell({ onTechView }: { onTechView: () => void }) {
@@ -151,29 +155,39 @@ function OfficeShell({ onTechView }: { onTechView: () => void }) {
   return (
     <div className={'shell' + (menu ? ' menu-open' : '')}>
       <aside className="side">
-        <div className="brand"><Mark /> LockDesk</div>
+        <Brand />
         <nav onClick={() => setMenu(false)}>
-          {NAV.map((n) => (
-            <a key={n.href} href={'#/' + n.href} className={n.match(r) ? 'on' : ''}>
-              {n.label}
-              {n.href === 'jobs' && unpaid ? <span className="nav-n">{unpaid}</span> : null}
-              {n.href === 'team' && teamAlerts ? <span className="nav-n alert">{teamAlerts}</span> : null}
-            </a>
+          {NAV.map((g) => (
+            <div key={g.group} className="nav-group">
+              <div className="nav-label">{g.group}</div>
+              {g.items.map((n) => (
+                <a key={n.href} href={'#/' + n.href} className={n.match(r) ? 'on' : ''}>
+                  {n.label}
+                  {n.href === 'jobs' && unpaid ? <span className="nav-n">{unpaid}</span> : null}
+                  {n.href === 'team' && teamAlerts ? <span className="nav-n alert">{teamAlerts}</span> : null}
+                </a>
+              ))}
+            </div>
           ))}
         </nav>
         <div className="side-foot">
-          <div className="me"><strong>{me?.name || email}</strong><span className="muted">{me ? me.role.charAt(0).toUpperCase() + me.role.slice(1) : ''}</span></div>
-          <div className={'live' + (live ? ' on' : '')}>{live ? 'Live' : 'Connecting'}</div>
-          <button className="link small" onClick={onTechView}>Technician view</button>
-          <a className="link small" href="#/system" onClick={() => setMenu(false)}>System check</a>
-          <button className="link small" onClick={() => { setMenu(false); setAcct(true) }}>Account</button>
-          <button className="link small" onClick={() => sb.auth.signOut()}>Sign out</button>
+          <div className="me">
+            <span className="avatar">{(me?.name || email || '?').trim().charAt(0).toUpperCase()}</span>
+            <span className="me-text"><strong>{me?.name || email}</strong><span>{me ? me.role.charAt(0).toUpperCase() + me.role.slice(1) : ''}</span></span>
+            <span className={'live-dot' + (live ? ' on' : '')} title={live ? 'Live updates on' : 'Connecting'} />
+          </div>
+          <div className="side-links" onClick={() => setMenu(false)}>
+            <button className="side-link" onClick={() => setAcct(true)}>Account</button>
+            <button className="side-link" onClick={onTechView}>Tech view</button>
+            <a className="side-link" href="#/system">System check</a>
+            <button className="side-link" onClick={() => sb.auth.signOut()}>Sign out</button>
+          </div>
         </div>
       </aside>
       <div className="topbar">
         <button className="btn ghost sm" onClick={() => setMenu(!menu)} aria-label="Menu">☰</button>
-        <div className="brand"><Mark /> LockDesk</div>
-        <a className="btn primary sm" href="#/new">+ Job</a>
+        <Brand tagline={false} />
+        <a className="btn gold sm" href="#/new">+ Job</a>
       </div>
       <div className="scrim" onClick={() => setMenu(false)} />
       <main className="main">
@@ -213,7 +227,7 @@ function TechShell({ canSwitch, onOffice }: { canSwitch: boolean; onOffice: () =
   return (
     <div className="tech-shell">
       <header className="tech-top">
-        <div className="brand"><Mark /> LockDesk</div>
+        <Brand />
         <div className="tech-top-r">
           <span className={'live' + (live ? ' on' : '')}>{live ? 'Live' : '…'}</span>
           {canSwitch ? <button className="btn ghost sm" onClick={onOffice}>Office</button> : null}
@@ -231,11 +245,11 @@ function Router() {
   const { me, loading, email, error } = useStore()
   const [techView, setTechView] = useState(() => { try { return localStorage.getItem('lockdesk.techview') === '1' } catch { return false } })
   const setTV = (v: boolean) => { setTechView(v); try { localStorage.setItem('lockdesk.techview', v ? '1' : '0') } catch {}; go('') }
-  if (loading && !me) return <div className="splash"><Mark /><span>Loading LockDesk…</span></div>
+  if (loading && !me) return <div className="splash"><Mark /><span>Loading {APP_NAME}…</span></div>
   if (!me) {
     return (
       <div className="login"><div className="login-card">
-        <div className="brand big"><Mark /> LockDesk</div>
+        <Brand big />
         <p>Signed in as {email}, but no staff profile was found for this account.</p>
         {error ? <div className="alert err">{error}</div> : null}
         <p className="muted small">The database creates a profile automatically when an account is made. If this persists, open System check or ask the owner.</p>
@@ -285,10 +299,10 @@ function App() {
   }, [uid])
 
   let body: React.ReactNode
-  if (session === undefined) body = <div className="splash"><Mark /><span>Loading LockDesk…</span></div>
+  if (session === undefined) body = <div className="splash"><Mark /><span>Loading {APP_NAME}…</span></div>
   else if (recovery && session) body = <NewPassword done={() => { setRecovery(false); toast('Password updated') }} />
   else if (!session) body = <Login />
-  else if (scanErr) body = <div className="login"><div className="login-card"><div className="brand big"><Mark /> LockDesk</div><div className="alert err">Could not reach the database: {scanErr}</div><button className="btn full" onClick={() => location.reload()}>Try again</button><button className="btn ghost full" onClick={() => sb.auth.signOut()}>Sign out</button></div></div>
+  else if (scanErr) body = <div className="login"><div className="login-card"><Brand big /><div className="alert err">Could not reach the database: {scanErr}</div><button className="btn full" onClick={() => location.reload()}>Try again</button><button className="btn ghost full" onClick={() => sb.auth.signOut()}>Sign out</button></div></div>
   else if (!ready) body = <div className="splash"><Mark /><span>Connecting to your database…</span></div>
   else body = (
     <StoreProvider userId={uid} email={session.user.email} onToast={toast}>
@@ -313,7 +327,7 @@ function boot() {
   if (!window.supabase) {
     root.render(
       <div className="login"><div className="login-card">
-        <div className="brand big">LockDesk</div>
+        <Brand big />
         <div className="alert err">Could not load the connection library. Check your internet connection and reload.</div>
         <button className="btn full" onClick={() => location.reload()}>Reload</button>
       </div></div>,

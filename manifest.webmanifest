@@ -1,13 +1,13 @@
 {
   "name": "LockDesk",
   "short_name": "LockDesk",
-  "description": "Locksmith dispatch",
+  "description": "Locksmith Dispatch",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#f3f4f6",
-  "theme_color": "#1b2433",
+  "background_color": "#13203a",
+  "theme_color": "#13203a",
   "icons": [
     {
       "src": "icon-192.png",

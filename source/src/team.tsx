@@ -1,3 +1,4 @@
+import { APP_NAME } from './brand'
 import React, { useState } from 'react'
 import { useStore } from './store'
 import { Empty, Field, Modal } from './ui'
@@ -15,7 +16,7 @@ function PasswordModal({ person, email, onClose }: { person: { id: string; name:
   const [done, setDone] = useState(false)
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
-  const copy = async () => { try { await navigator.clipboard.writeText(`LockDesk sign in\nEmail: ${email}\nTemporary password: ${pw}`); toast('Copied') } catch {} }
+  const copy = async () => { try { await navigator.clipboard.writeText(`${APP_NAME} sign in\nEmail: ${email}\nTemporary password: ${pw}`); toast('Copied') } catch {} }
   return (
     <Modal title={`New password · ${person.name}`} onClose={onClose}>
       {!done ? (
@@ -49,7 +50,7 @@ function AddMemberModal({ onClose }: { onClose: () => void }) {
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState(false)
-  const copy = async () => { try { await navigator.clipboard.writeText(`LockDesk sign in\nEmail: ${email.trim()}\nTemporary password: ${pw}`); toast('Copied') } catch {} }
+  const copy = async () => { try { await navigator.clipboard.writeText(`${APP_NAME} sign in\nEmail: ${email.trim()}\nTemporary password: ${pw}`); toast('Copied') } catch {} }
   return (
     <Modal title="Add team member" onClose={onClose}>
       {!done ? (

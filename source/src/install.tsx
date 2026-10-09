@@ -1,3 +1,4 @@
+import { APP_NAME } from './brand'
 import React, { useState } from 'react'
 
 // Gentle hint to put LockDesk on the home screen, shown only in a phone browser tab
@@ -13,7 +14,7 @@ export function InstallHint() {
   return (
     <div className="install-hint">
       <div>
-        <strong>Add LockDesk to your home screen</strong>
+        <strong>Add {APP_NAME} to your home screen</strong>
         <div className="small">
           {ios ? <>Tap the <strong>Share</strong> button, then <strong>Add to Home Screen</strong>.</> : <>Tap the <strong>⋮</strong> menu, then <strong>Add to Home screen</strong> or <strong>Install app</strong>.</>}
         </div>

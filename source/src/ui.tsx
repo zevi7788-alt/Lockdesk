@@ -1,3 +1,4 @@
+import { APP_NAME, APP_TAGLINE } from './brand'
 import React, { useEffect, useState } from 'react'
 import { Job, STATUS_LABEL, fmtWhen, money, titleCase } from './model'
 import { useStore } from './store'
@@ -104,6 +105,30 @@ export function KV({ k, v, mono }: { k: string; v: React.ReactNode; mono?: boole
     <div className="kv">
       <span className="k">{k}</span>
       <span className={'v' + (mono ? ' mono' : '')}>{v === '' || v === null || v === undefined ? <span className="muted">None</span> : v}</span>
+    </div>
+  )
+}
+
+
+export function Mark() {
+  return (
+    <svg className="mark" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M7.5 10.5V7.5a4.5 4.5 0 0 1 9 0v3" stroke="currentColor" strokeWidth="1.9" fill="none" strokeLinecap="round" />
+      <rect x="4.5" y="10" width="15" height="11.5" rx="1.6" fill="currentColor" />
+      <circle cx="12" cy="14.6" r="1.55" fill="var(--mark-cut, #fff)" />
+      <rect x="11.3" y="15.2" width="1.4" height="3.3" rx=".5" fill="var(--mark-cut, #fff)" />
+    </svg>
+  )
+}
+
+export function Brand({ big, mark, tagline = true }: { big?: boolean; mark?: React.ReactNode; tagline?: boolean }) {
+  return (
+    <div className={'brand' + (big ? ' big' : '')}>
+      <span className="brand-mark">{mark ?? <Mark />}</span>
+      <span className="brand-text">
+        <span className="brand-name">{APP_NAME}</span>
+        {tagline ? <span className="brand-tag">{APP_TAGLINE}</span> : null}
+      </span>
     </div>
   )
 }

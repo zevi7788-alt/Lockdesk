@@ -1,3 +1,4 @@
+import { APP_NAME } from './brand'
 import React, { useState } from 'react'
 import { fetchAll, schema, SPEC } from './db'
 import { useStore } from './store'
@@ -59,7 +60,7 @@ export async function downloadBackup(): Promise<{ file: string; counts: Record<s
   }
   const d = new Date()
   const p = (n: number) => String(n).padStart(2, '0')
-  const file = `LockDesk backup ${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}.xlsx`
+  const file = `${APP_NAME} backup ${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}.xlsx`
   XLSX.writeFile(wb, file)
   try { localStorage.setItem(BACKUP_KEY, d.toISOString()) } catch {}
   return { file, counts }
@@ -102,7 +103,7 @@ export function ProblemReport() {
   const { me, email, live, error, jobs, customers } = useStore()
   const [copied, setCopied] = useState(false)
   const report = [
-    'LockDesk problem report',
+    `${APP_NAME} problem report`,
     `Time: ${new Date().toLocaleString()}`,
     `App version: ${BUILD}`,
     `Address: ${location.origin + location.pathname}`,

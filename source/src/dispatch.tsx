@@ -1,3 +1,4 @@
+import { APP_NAME } from './brand'
 import React, { useEffect, useMemo, useState } from 'react'
 import { useStore } from './store'
 import { Empty, Field, JobCard, KV, Modal, PayBadge, PriorityBadge, Section, StatusBadge, go } from './ui'
@@ -50,7 +51,10 @@ export function Dashboard() {
   return (
     <div className="page">
       <div className="page-head">
-        <h1>Dispatch</h1>
+        <div>
+          <div className="eyebrow">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</div>
+          <h1>Dispatch</h1>
+        </div>
         <a className="btn primary" href="#/new">+ New job</a>
       </div>
       <BackupReminder />
@@ -366,7 +370,7 @@ function PaymentModal({ job, onClose, onDone, userId }: { job: Job; onClose: () 
   const [busy, setBusy] = useState(false)
   return (
     <Modal title={`Record payment · ${job.number}`} onClose={onClose}>
-      <p className="muted small">Take the card in your processor or terminal first, then record it here. LockDesk never stores card numbers.</p>
+      <p className="muted small">Take the card in your processor or terminal first, then record it here. {APP_NAME} never stores card numbers.</p>
       <Field label="Amount ($)"><input id="pm-amt" type="number" step="0.01" inputMode="decimal" className="mono big-input" value={amount} onChange={(e) => setAmount(e.target.value)} /></Field>
       <div className="field">
         <span className="flabel">Method</span>
@@ -659,7 +663,7 @@ export function SystemCheck() {
         {error ? <div className="alert err">{error}</div> : null}
       </div>
       {!partsEnabled() || !approvalEnabled() || !invoicesEnabled() ? <div className="panel warn-panel"><h3>Database update</h3><SetupScript intro="Turns on owner approval for every account, owner managed password resets, parts ordering, and automatic invoices. It only adds to your database and is safe to run more than once." /></div> : null}
-      <p className="muted small">LockDesk detects your database columns automatically. If something looks wrong, screenshot this page and send it over.</p>
+      <p className="muted small">{APP_NAME} detects your database columns automatically. If something looks wrong, screenshot this page and send it over.</p>
       <div className="report-grid">
         {Object.keys(SPEC).map((t) => (
           <div className="panel" key={t}>
