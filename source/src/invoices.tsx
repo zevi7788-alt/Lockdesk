@@ -369,7 +369,7 @@ export function SettingsPage() {
   const { company, emailReady, me, toast, reload } = useStore()
   const [c, setC] = useState<Company | null>(company)
   const [busy, setBusy] = useState(false)
-  useEffect(() => { if (company && !c) setC(company) }, [company])
+  useEffect(() => { if (company && !c) setC(!company.name || company.name === 'Your Company' ? { ...company, name: 'Champion Locksmith' } : company) }, [company])
   if (!invoicesEnabled()) return <InvoicesPage />
   if (!c) return <div className="page"><div className="loading">Loading…</div></div>
   const owner = me?.role === 'owner'
