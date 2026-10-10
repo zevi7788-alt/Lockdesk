@@ -245,6 +245,15 @@ export function CustomerInvoices({ customerId }: { customerId: string }) {
   )
 }
 
+function TaxNote() {
+  const { company } = useStore()
+  if (!company) return null
+  const r = company.taxRate
+  return r > 0
+    ? <div className="tax-note ok">Sales tax <strong>{(r * 100).toFixed(3).replace(/\.?0+$/, '')}%</strong> is added automatically to every new invoice.</div>
+    : <div className="tax-note">Sales tax is <strong>off</strong>. Turn it on in <a href="#/settings">Invoice settings</a>.</div>
+}
+
 export function InvoicesPage({ filter }: { filter?: string }) {
   const { invoices } = useStore()
   const [q, setQ] = useState('')
@@ -267,6 +276,7 @@ export function InvoicesPage({ filter }: { filter?: string }) {
   return (
     <div className="page">
       <div className="page-head"><h1>Invoices</h1><a className="btn" href="#/settings">Invoice settings</a></div>
+      <TaxNote />
       <div className="stats">
         <div className="stat"><span className="stat-v mono">{money(openTotal)}</span><span className="stat-k">Open balance</span></div>
         <div className="stat"><span className="stat-v mono">{money(paidMonth)}</span><span className="stat-k">Paid this month</span></div>
