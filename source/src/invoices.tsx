@@ -380,8 +380,11 @@ export function SettingsPage() {
             <textarea id="co-pay" rows={2} value={c.paymentInstructions} onChange={set('paymentInstructions')} />
           </Field>
           <Field label="Footer note" wide><input id="co-foot" value={c.footer} onChange={set('footer')} /></Field>
-          <Field label="Sales tax (%)" hint="Added on top of the final amount. Leave 0 if your prices already include tax. Check with your accountant.">
-            <input id="co-tax" type="number" step="0.001" min="0" className="mono" value={Math.round(c.taxRate * 100000) / 1000} onChange={(e) => setC({ ...c, taxRate: (Number(e.target.value) || 0) / 100 })} />
+          <Field label="Sales tax (%)" hint="Added on top of the technician's final amount on every invoice. Rockland County, NY is 8.375%. Leave 0 if your prices already include tax.">
+            <div className="tax-row">
+              <input id="co-tax" type="number" step="0.001" min="0" max="20" className="mono" value={Math.round(c.taxRate * 100000) / 1000} onChange={(e) => setC({ ...c, taxRate: Math.min(20, Math.max(0, Number(e.target.value) || 0)) / 100 })} />
+              <button type="button" className="btn" onClick={() => setC({ ...c, taxRate: 0.08375 })}>Rockland 8.375%</button>
+            </div>
           </Field>
         </div>
       </fieldset>
@@ -397,7 +400,15 @@ export function SettingsPage() {
         <div className="form-foot">
           <button className="btn primary big" disabled={busy} onClick={async () => {
             setBusy(true)
-            try { await saveCompany(c); toast('Settings saved'); await reload() } catch (e: any) { toast(e.message, 'err') } finally { setBusy(false) }
+            try {
+              const changed = company && Math.abs(company.taxRate - c.taxRate) > 1e-9
+              await saveCompany(c)
+              if (changed) {
+                const { data } = await sb.rpc('ld_apply_tax_to_open_invoices')
+                toast(data ? `Settings saved. Tax updated on ${data} open invoice${data === 1 ? '' : 's'}.` : 'Settings saved')
+              } else toast('Settings saved')
+              await reload()
+            } catch (e: any) { toast(e.message, 'err') } finally { setBusy(false) }
           }}>{busy ? 'Saving…' : 'Save settings'}</button>
         </div>
       ) : null}

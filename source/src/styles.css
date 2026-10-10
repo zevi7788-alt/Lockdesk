@@ -645,3 +645,8 @@ input:focus, select:focus, textarea:focus { border-color: var(--brand); box-shad
   .stat-k { font-size: 12px; }
   .side { padding-top: calc(20px + env(safe-area-inset-top, 0px)); }
 }
+.tax-line { display: flex; justify-content: space-between; font-size: 14px; color: var(--ink-2); padding: 2px 0; }
+.tax-line.total { font-size: 17px; font-weight: 800; color: var(--ink); border-top: 1px solid var(--line); padding-top: 8px; }
+.tax-row { display: flex; gap: 8px; }
+.tax-row input { max-width: 140px; }
+.page-head > .head-actions { flex-direction: row; flex-wrap: wrap; justify-content: flex-end; align-items: center; }

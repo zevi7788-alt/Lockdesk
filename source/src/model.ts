@@ -633,3 +633,10 @@ export async function createMember(p: { name: string; email: string; password: s
   try { await updateMyProfile(user.id, { name: p.name.trim() }) } catch {}
   return user.id
 }
+
+
+// Final amount plus sales tax (rate like 0.08375), rounded to the cent like the invoice
+export function withTax(final: number | null, rate: number): number | null {
+  if (final === null || isNaN(final)) return null
+  return Math.round(final * 100) / 100 + Math.round(final * rate * 100) / 100
+}

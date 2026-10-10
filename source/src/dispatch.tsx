@@ -13,7 +13,7 @@ import { SetupScript } from './setup'
 import { Icon } from './icons'
 import { BackupPanel, BackupReminder, ProblemReport, BUILD } from './backup'
 import { CustomerInvoices, JobInvoicePanel, invoicesEnabled } from './invoices'
-import { partsEnabled, partsState, approvalEnabled } from './model'
+import { partsEnabled, partsState, approvalEnabled, withTax } from './model'
 
 const PRI_RANK: Record<string, number> = { emergency: 0, high: 1, normal: 2, low: 3 }
 const byUrgency = (a: Job, b: Job) =>
@@ -22,7 +22,8 @@ const byUrgency = (a: Job, b: Job) =>
 // ---------------- Dashboard ----------------
 
 export function Dashboard() {
-  const { jobs, loading, partsFor, me } = useStore()
+  const { jobs, loading, partsFor, me, invoices, company } = useStore()
+  const owed = (j: Job) => invoices.find((i) => i.jobId === j.id && i.status !== 'void')?.total ?? withTax(j.final, company?.taxRate || 0) ?? 0
   const open = jobs.filter((j) => ACTIVE.includes(j.status))
   const urgent = open.filter((j) => j.priority === 'emergency' || j.priority === 'high').sort(byUrgency)
   const unassigned = open.filter((j) => !j.techId && !urgent.includes(j)).sort(byUrgency)
@@ -43,7 +44,7 @@ export function Dashboard() {
     { k: 'Unassigned', v: open.filter((j) => !j.techId).length, href: 'jobs/filter/unassigned', warn: true, icon: 'alert', tone: 'orange' },
     { k: 'In the field', v: open.filter((j) => j.status === 'on_the_way' || j.status === 'arrived').length, href: 'jobs/filter/field', icon: 'truck', tone: 'teal' },
     { k: 'Unpaid', v: unpaid.length, href: 'jobs/filter/unpaid', warn: true, icon: 'invoices', tone: 'red' },
-    { k: 'Unpaid balance', v: money(unpaid.reduce((a, j) => a + (j.final || 0), 0)), href: 'jobs/filter/unpaid', icon: 'dollar', tone: 'purple' },
+    { k: 'Unpaid balance', v: money(unpaid.reduce((a, j) => a + owed(j), 0)), href: 'jobs/filter/unpaid', icon: 'dollar', tone: 'purple' },
     { k: 'Completed today', v: doneToday.length, href: 'jobs/filter/completed', icon: 'check', tone: 'green' },
   ]
 
@@ -363,7 +364,10 @@ function FinalModal({ job, onClose }: { job: Job; onClose: () => void }) {
 }
 
 function PaymentModal({ job, onClose, onDone, userId }: { job: Job; onClose: () => void; onDone: () => void; userId: string }) {
-  const [amount, setAmount] = useState(job.final !== null ? String(job.final) : job.estimate !== null ? String(job.estimate) : '')
+  const { invoices, company } = useStore()
+  const inv = invoices.find((i) => i.jobId === job.id && i.status !== 'void')
+  const due = inv ? inv.total : withTax(job.final ?? job.estimate, company?.taxRate || 0)
+  const [amount, setAmount] = useState(due !== null ? String(Math.round(due * 100) / 100) : '')
   const [method, setMethod] = useState<PayMethod>('credit_card')
   const [ref, setRef] = useState('')
   const [notes, setNotes] = useState('')
@@ -372,6 +376,7 @@ function PaymentModal({ job, onClose, onDone, userId }: { job: Job; onClose: () 
   return (
     <Modal title={`Record payment · ${job.number}`} onClose={onClose}>
       <p className="muted small">Take the card in your processor or terminal first, then record it here. {APP_NAME} never stores card numbers.</p>
+      {inv && inv.tax > 0 ? <p className="small muted">Includes {money(inv.tax)} sales tax on {money(inv.subtotal)}.</p> : null}
       <Field label="Amount ($)"><input id="pm-amt" type="number" step="0.01" inputMode="decimal" className="mono big-input" value={amount} onChange={(e) => setAmount(e.target.value)} /></Field>
       <div className="field">
         <span className="flabel">Method</span>
@@ -563,7 +568,7 @@ export function Calendar() {
 // ---------------- Reports ----------------
 
 export function Reports() {
-  const { jobs, techName, profiles } = useStore()
+  const { jobs, techName, profiles, invoices } = useStore()
   const [range, setRange] = useState('month')
   const now = new Date()
   const from = useMemo(() => {
@@ -582,6 +587,8 @@ export function Reports() {
   const billed = completed.reduce((a, j) => a + (j.final || 0), 0)
   const avg = completed.length ? billed / completed.length : 0
   const cancelled = inRange.filter((j) => j.status === 'cancelled').length
+  const paidInvoices = invoices.filter((i) => i.status === 'paid' && i.paidAt && i.paidAt >= from)
+  const taxCollected = paidInvoices.reduce((a, i) => a + i.tax, 0)
 
   const group = (key: (j: Job) => string, list: Job[]) => {
     const m = new Map<string, { n: number; amt: number }>()
@@ -619,11 +626,12 @@ export function Reports() {
         </div>
       </div>
       <div className="stats">
-        <div className="stat"><span className="stat-v mono">{money(revenue)}</span><span className="stat-k">Collected</span></div>
+        <div className="stat"><span className="stat-v mono">{money(revenue)}</span><span className="stat-k">Collected (before tax)</span></div>
         <div className="stat"><span className="stat-v mono">{completed.length}</span><span className="stat-k">Completed jobs</span></div>
         <div className="stat"><span className="stat-v mono">{money(avg)}</span><span className="stat-k">Average job</span></div>
         <div className={'stat' + (unpaid.length ? ' warn' : '')}><span className="stat-v mono">{unpaid.length}</span><span className="stat-k">Unpaid · {money(unpaid.reduce((a, j) => a + (j.final || 0), 0))}</span></div>
         <div className="stat"><span className="stat-v mono">{cancelled}</span><span className="stat-k">Cancelled</span></div>
+        {invoices.length ? <div className="stat"><span className="stat-v mono">{money(taxCollected)}</span><span className="stat-k">Sales tax collected</span></div> : null}
         <div className="stat"><span className="stat-v mono">{inRange.length}</span><span className="stat-k">All jobs</span></div>
       </div>
       <div className="report-grid">

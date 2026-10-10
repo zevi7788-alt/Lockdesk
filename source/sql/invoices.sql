@@ -14,7 +14,7 @@ create table if not exists public.ld_company (
   id boolean primary key default true check (id),
   name text not null default 'Your Company',
   phone text, email text, address text, website text,
-  tax_rate numeric(6,4) not null default 0 check (tax_rate >= 0 and tax_rate < 1),
+  tax_rate numeric(7,5) not null default 0 check (tax_rate >= 0 and tax_rate < 1),
   payment_instructions text,
   invoice_footer text default 'Thank you for your business.',
   app_url text,
@@ -22,6 +22,8 @@ create table if not exists public.ld_company (
   updated_at timestamptz not null default now()
 );
 insert into public.ld_company (id) values (true) on conflict do nothing;
+-- Allow rates like 8.375% (five decimal places)
+alter table public.ld_company alter column tax_rate type numeric(7,5);
 alter table public.ld_company enable row level security;
 drop policy if exists ld_company_read on public.ld_company;
 drop policy if exists ld_company_write on public.ld_company;
@@ -60,7 +62,7 @@ begin
       lines jsonb not null default '[]'::jsonb,
       lines_edited boolean not null default false,
       subtotal numeric(10,2) not null default 0,
-      tax_rate numeric(6,4) not null default 0,
+      tax_rate numeric(7,5) not null default 0,
       tax numeric(10,2) not null default 0,
       total numeric(10,2) not null default 0,
       issued_at timestamptz not null default now(),
@@ -81,6 +83,7 @@ begin
     )$f$, job_id_type, cust_id_type);
 end $$;
 
+alter table public.invoices alter column tax_rate type numeric(7,5);
 create index if not exists invoices_customer_idx on public.invoices(customer_id);
 create index if not exists invoices_status_idx on public.invoices(status);
 alter table public.invoices enable row level security;
@@ -429,3 +432,19 @@ language sql stable security definer set search_path = public as $$
 $$;
 revoke all on function public.ld_email_ready() from public, anon;
 grant execute on function public.ld_email_ready() to authenticated;
+
+-- Apply a new tax rate to invoices that are still open and haven't been hand edited
+create or replace function public.ld_apply_tax_to_open_invoices() returns integer
+language plpgsql security definer set search_path = public as $$
+declare v_rate numeric; n integer;
+begin
+  if not public.ld_is_owner() then raise exception 'Only the owner can change tax.'; end if;
+  select tax_rate into v_rate from public.ld_company limit 1;
+  update public.invoices
+     set tax_rate = v_rate, tax = round(subtotal * v_rate, 2), total = subtotal + round(subtotal * v_rate, 2), updated_at = now()
+   where status = 'open' and tax_rate is distinct from v_rate;
+  get diagnostics n = row_count;
+  return n;
+end $$;
+revoke all on function public.ld_apply_tax_to_open_invoices() from public, anon;
+grant execute on function public.ld_apply_tax_to_open_invoices() to authenticated;

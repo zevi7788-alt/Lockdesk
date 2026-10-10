@@ -4,7 +4,7 @@ import { Empty, Field, Modal, PriorityBadge, StatusBadge } from './ui'
 import { PartsBadge, PartsPanel } from './parts'
 import { InstallHint } from './install'
 import {
-  Job, acceptJob, fmtDateTime, fmtWhen, isToday, locallyAccepted, mapsHref, money, queueText, setStatus, telHref, titleCase, updateJob,
+  Job, withTax, acceptJob, fmtDateTime, fmtWhen, isToday, locallyAccepted, mapsHref, money, queueText, setStatus, telHref, titleCase, updateJob,
 } from './model'
 
 const isAccepted = (j: Job) => !!j.acceptedAt || locallyAccepted().includes(j.id) || ['on_the_way', 'arrived', 'completed'].includes(j.status)
@@ -132,6 +132,8 @@ export function TechJob({ id, back }: { id: string; back: () => void }) {
 }
 
 function CompleteModal({ job, onClose, onDone }: { job: Job; onClose: () => void; onDone: () => void }) {
+  const { company } = useStore()
+  const rate = company?.taxRate || 0
   const [amount, setAmount] = useState(job.final !== null ? String(job.final) : job.estimate !== null ? String(job.estimate) : '')
   const [notes, setNotes] = useState(job.techNotes)
   const [err, setErr] = useState('')
@@ -142,6 +144,12 @@ function CompleteModal({ job, onClose, onDone }: { job: Job; onClose: () => void
         <input id="cm-amt" autoFocus type="number" inputMode="decimal" step="0.01" min="0" className="mono big-input" value={amount} onChange={(e) => setAmount(e.target.value)} />
       </Field>
       {job.estimate !== null ? <p className="muted small">Estimate was {money(job.estimate)}</p> : null}
+      {rate > 0 && amount !== '' ? (
+        <div className="tax-line"><span>Sales tax {(rate * 100).toFixed(3).replace(/\.?0+$/, '')}%</span><span className="mono">{money(Math.round(Number(amount) * rate * 100) / 100)}</span></div>
+      ) : null}
+      {rate > 0 && amount !== '' ? (
+        <div className="tax-line total"><span>Customer pays</span><span className="mono">{money(withTax(Number(amount), rate))}</span></div>
+      ) : null}
       <Field label="Technician notes">
         <textarea id="cm-notes" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Work done, parts used…" />
       </Field>
@@ -151,10 +159,10 @@ function CompleteModal({ job, onClose, onDone }: { job: Job; onClose: () => void
         try {
           const final = Number(amount)
           await setStatus(job, 'completed', { final, tech_notes: notes.trim() || null })
-          await queueText(job, `Your locksmith service has been completed. Your final balance is ${money(final)}. Our office will contact you shortly to process payment. Thank you.`, 'job_completed')
+          await queueText(job, `Your locksmith service has been completed. Your final balance is ${money(withTax(final, rate))}. Our office will contact you shortly to process payment. Thank you.`, 'job_completed')
           onDone()
         } catch (e: any) { setErr(e.message || String(e)) } finally { setBusy(false) }
-      }}>{busy ? 'Saving…' : `COMPLETE · ${money(Number(amount) || 0)}`}</button>
+      }}>{busy ? 'Saving…' : `COMPLETE · ${money(withTax(Number(amount) || 0, rate))}`}</button>
     </Modal>
   )
 }
