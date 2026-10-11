@@ -10,10 +10,11 @@ import {
 import { col, get, schema, scanSchema, SPEC } from './db'
 import { PartsBadge, PartsPanel, PartsSetup } from './parts'
 import { SetupScript } from './setup'
+import { DeleteConfirm } from './confirm'
 import { Icon } from './icons'
 import { BackupPanel, BackupReminder, ProblemReport, BUILD } from './backup'
 import { CustomerInvoices, JobInvoicePanel, invoicesEnabled } from './invoices'
-import { partsEnabled, partsState, approvalEnabled, withTax } from './model'
+import { partsEnabled, partsState, approvalEnabled, withTax, deleteJob, deleteCustomer } from './model'
 
 const PRI_RANK: Record<string, number> = { emergency: 0, high: 1, normal: 2, low: 3 }
 const byUrgency = (a: Job, b: Job) =>
@@ -204,7 +205,8 @@ export function Timeline({ job, events }: { job: Job; events: JobEvent[] }) {
 }
 
 export function JobDetail({ id }: { id: string }) {
-  const { jobs, techs, techName, userId, toast, reload, payments } = useStore()
+  const { jobs, techs, techName, userId, toast, reload, payments, me, invoices, partsFor } = useStore()
+  const [deleting, setDeleting] = useState(false)
   const job = jobs.find((j) => j.id === id)
   const [events, setEvents] = useState<JobEvent[]>([])
   const [notes, setNotes] = useState<any[]>([])
@@ -243,6 +245,7 @@ export function JobDetail({ id }: { id: string }) {
         </div>
         <div className="head-actions">
           <a className="btn" href={'#/jobs/' + job.id + '/edit'}>Edit</a>
+          {me?.role === 'owner' ? <button className="btn danger-outline" onClick={() => setDeleting(true)}>Delete</button> : null}
           {job.status === 'completed' && job.payStatus !== 'paid' ? <button className="btn primary" onClick={() => setPayOpen(true)}>Record payment</button> : null}
         </div>
       </div>
@@ -344,6 +347,21 @@ export function JobDetail({ id }: { id: string }) {
 
       {payOpen ? <PaymentModal job={job} onClose={() => setPayOpen(false)} onDone={async () => { setPayOpen(false); toast('Payment recorded'); await reload() }} userId={userId} /> : null}
       {finalOpen ? <FinalModal job={job} onClose={() => setFinalOpen(false)} /> : null}
+      {deleting ? (
+        <DeleteConfirm
+          title={`Delete job ${job.number}`}
+          lines={[
+            <>Job {job.number} for {job.customerName}</>,
+            ...(invoices.some((i) => i.jobId === job.id) ? [<>Its invoice {invoices.find((i) => i.jobId === job.id)!.number}</>] : []),
+            ...(payments.some((p) => p.jobId === job.id) ? [<>Its payment records</>] : []),
+            ...(partsFor(job.id).length ? [<>{partsFor(job.id).length} part{partsFor(job.id).length === 1 ? '' : 's'}</>] : []),
+            <>Its timeline and texts</>,
+          ]}
+          button="Delete job permanently"
+          onClose={() => setDeleting(false)}
+          onConfirm={async () => { await deleteJob(job.id); toast(`Job ${job.number} deleted`); go('jobs'); await reload() }}
+        />
+      ) : null}
     </div>
   )
 }
@@ -432,7 +450,8 @@ export function Customers() {
 }
 
 export function CustomerDetail({ id }: { id: string }) {
-  const { customers, jobs, toast, reload } = useStore()
+  const { customers, jobs, toast, reload, me } = useStore()
+  const [deleting, setDeleting] = useState(false)
   const c = customers.find((x) => x.id === id)
   const [edit, setEdit] = useState(false)
   const [form, setForm] = useState<Customer | null>(null)
@@ -447,6 +466,7 @@ export function CustomerDetail({ id }: { id: string }) {
         <div><div className="crumbs"><a href="#/customers">Customers</a></div><h1>{c.name}</h1></div>
         <div className="head-actions">
           <button className="btn" onClick={() => { setEdit(!edit); setForm(null) }}>{edit ? 'Cancel' : 'Edit'}</button>
+          {me?.role === 'owner' ? <button className="btn danger-outline" onClick={() => setDeleting(true)}>Delete</button> : null}
           <button className="btn primary" onClick={() => {
             sessionStorage.setItem('lockdesk.prefill', c.id); go('new')
           }}>+ New job</button>
@@ -497,6 +517,15 @@ export function CustomerDetail({ id }: { id: string }) {
           <CustomerInvoices customerId={c.id} />
         </div>
       </div>
+      {deleting ? (
+        <DeleteConfirm
+          title={`Delete ${c.name}`}
+          lines={[<>Customer {c.name}</>, ...(history.length ? [<>{history.length} job{history.length === 1 ? '' : 's'}, with their invoices, payments and parts</>] : [])]}
+          button="Delete customer permanently"
+          onClose={() => setDeleting(false)}
+          onConfirm={async () => { await deleteCustomer(c.id); toast(`${c.name} deleted`); go('customers'); await reload() }}
+        />
+      ) : null}
     </div>
   )
 }

@@ -640,3 +640,18 @@ export function withTax(final: number | null, rate: number): number | null {
   if (final === null || isNaN(final)) return null
   return Math.round(final * 100) / 100 + Math.round(final * rate * 100) / 100
 }
+
+export async function deleteJob(id: string) {
+  const { error } = await sb.rpc('ld_delete_job', { p_job: id })
+  if (error) {
+    if (error.code === 'PGRST202' || /could not find the function/i.test(String(error.message))) throw new Error('Delete needs the latest database update. Open System check for the steps.')
+    throw new Error(errText(error))
+  }
+}
+export async function deleteCustomer(id: string) {
+  const { error } = await sb.rpc('ld_delete_customer', { p_customer: id })
+  if (error) {
+    if (error.code === 'PGRST202' || /could not find the function/i.test(String(error.message))) throw new Error('Delete needs the latest database update. Open System check for the steps.')
+    throw new Error(errText(error))
+  }
+}
