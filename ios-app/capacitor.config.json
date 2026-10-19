@@ -1,0 +1,14 @@
+{
+  "appId": "com.zevineiman.lockdesk",
+  "appName": "LockDesk",
+  "webDir": "www",
+  "ios": {
+    "contentInset": "never",
+    "backgroundColor": "#ffffff",
+    "limitsNavigationsToAppBoundDomains": false
+  },
+  "plugins": {
+    "SplashScreen": { "launchShowDuration": 600, "backgroundColor": "#ffffff", "showSpinner": false },
+    "StatusBar": { "style": "LIGHT", "overlaysWebView": true }
+  }
+}

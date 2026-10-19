@@ -1,3 +1,4 @@
+import { appBase } from './brand'
 import { sb, col, get, put, getAmt, putAmt, has, schema, errText, SUPABASE_URL, SUPABASE_KEY, fetchAll } from './db'
 
 export type Role = 'owner' | 'dispatcher' | 'technician'
@@ -592,7 +593,7 @@ export async function requestPasswordReset(email: string): Promise<'owner' | 'em
   if (!error) return 'owner'
   const missing = error.code === 'PGRST202' || /could not find the function/i.test(String(error.message))
   if (!missing) throw new Error(errText(error))
-  const r = await sb.auth.resetPasswordForEmail(email.trim(), { redirectTo: location.origin + location.pathname })
+  const r = await sb.auth.resetPasswordForEmail(email.trim(), { redirectTo: appBase() })
   if (r.error) throw new Error(errText(r.error))
   return 'email'
 }

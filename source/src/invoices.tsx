@@ -1,3 +1,4 @@
+import { appBase } from './brand'
 import React, { useEffect, useMemo, useState } from 'react'
 import { sb, schema, errText, fetchAll } from './db'
 import { useStore } from './store'
@@ -70,7 +71,7 @@ export async function saveCompany(c: Company) {
   }).eq('id', true)
   if (error) throw new Error(errText(error))
 }
-export const appUrl = () => location.origin + location.pathname
+export const appUrl = appBase
 export const invoiceLink = (inv: Invoice) => appUrl() + '#/i/' + inv.token
 
 async function rpc(fn: string, args?: any) {

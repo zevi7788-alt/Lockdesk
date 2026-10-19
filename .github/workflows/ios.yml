@@ -1,0 +1,90 @@
+name: iPhone app
+
+on:
+  push:
+    branches: [main]
+    paths: ['index.html', 'ios-app/**', '.github/workflows/ios.yml']
+  workflow_dispatch:
+
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 45
+    env:
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+    defaults:
+      run:
+        working-directory: ios-app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install
+        run: npm install --no-audit --no-fund
+
+      - name: Copy the web app in
+        run: npm run prepare-web
+
+      - name: Create the iOS project
+        run: |
+          npx cap add ios
+          npx capacitor-assets generate --ios --iconBackgroundColor '#1d5fd6' --splashBackgroundColor '#ffffff' --splashBackgroundColorDark '#0b1120'
+          npx cap sync ios
+
+      - name: App settings
+        run: |
+          PLIST=ios/App/App/Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName LockDesk" "$PLIST" || /usr/libexec/PlistBuddy -c "Add :CFBundleDisplayName string LockDesk" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :ITSAppUsesNonExemptEncryption bool false" "$PLIST" || true
+          cd ios/App
+          agvtool new-marketing-version 1.0.0
+          agvtool new-version -all ${{ github.run_number }}
+
+      - name: Find project
+        id: proj
+        run: |
+          if [ -d ios/App/App.xcworkspace ]; then echo "flag=-workspace ios/App/App.xcworkspace" >> "$GITHUB_OUTPUT"; else echo "flag=-project ios/App/App.xcodeproj" >> "$GITHUB_OUTPUT"; fi
+
+      - name: Build check (simulator, no signing)
+        if: env.ASC_KEY_ID == ''
+        run: |
+          xcodebuild ${{ steps.proj.outputs.flag }} -scheme App -configuration Release \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO build | tail -n 40
+
+      - name: Build, sign and upload to App Store Connect
+        if: env.ASC_KEY_ID != ''
+        run: |
+          mkdir -p ~/private_keys
+          echo "$ASC_KEY_P8" > ~/private_keys/AuthKey_$ASC_KEY_ID.p8
+          KEY=~/private_keys/AuthKey_$ASC_KEY_ID.p8
+          xcodebuild ${{ steps.proj.outputs.flag }} -scheme App -configuration Release \
+            -destination 'generic/platform=iOS' -archivePath $RUNNER_TEMP/App.xcarchive archive \
+            -allowProvisioningUpdates -authenticationKeyPath "$KEY" \
+            -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" CODE_SIGN_STYLE=Automatic | tail -n 40
+          cat > $RUNNER_TEMP/ExportOptions.plist <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>upload</string>
+            <key>teamID</key><string>$APPLE_TEAM_ID</string>
+            <key>signingStyle</key><string>automatic</string>
+          </dict></plist>
+          PLIST
+          xcodebuild -exportArchive -archivePath $RUNNER_TEMP/App.xcarchive \
+            -exportOptionsPlist $RUNNER_TEMP/ExportOptions.plist -exportPath $RUNNER_TEMP/export \
+            -allowProvisioningUpdates -authenticationKeyPath "$KEY" \
+            -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+          rm -f "$KEY"

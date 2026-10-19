@@ -1,4 +1,4 @@
-import { APP_NAME } from './brand'
+import { APP_NAME, appBase } from './brand'
 import React, { useCallback, useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { initClient, sb, scanSchema, errText } from './db'
@@ -36,7 +36,7 @@ function Login() {
       } else if (mode === 'up') {
         const { data, error } = await sb.auth.signUp({
           email: email.trim(), password: pw,
-          options: { data: { full_name: name.trim(), name: name.trim() }, emailRedirectTo: location.origin + location.pathname },
+          options: { data: { full_name: name.trim(), name: name.trim() }, emailRedirectTo: appBase() },
         })
         if (error) throw error
         if (!data.session) setMsg('Request sent. The owner has to approve your account before you can sign in.')
