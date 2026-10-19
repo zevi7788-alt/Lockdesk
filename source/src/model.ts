@@ -8,7 +8,7 @@ export type PayMethod = 'credit_card' | 'cash' | 'zelle' | 'check' | 'other'
 
 export const STATUSES: Status[] = ['new', 'scheduled', 'assigned', 'on_the_way', 'arrived', 'completed', 'cancelled']
 export const PRIORITIES: Priority[] = ['low', 'normal', 'high', 'emergency']
-export const PAY_METHODS: PayMethod[] = ['credit_card', 'cash', 'check', 'other']
+export const PAY_METHODS: PayMethod[] = ['credit_card', 'cash', 'check', 'zelle', 'other']
 export const CATEGORIES = ['residential', 'automotive', 'commercial']
 export const SERVICE_TYPES = [
   'Lockout', 'House Lockout', 'Car Lockout', 'Business Lockout', 'Rekey', 'Lock Change', 'Lock Installation',

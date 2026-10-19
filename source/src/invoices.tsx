@@ -369,7 +369,7 @@ export function SettingsPage() {
   const { company, emailReady, me, toast, reload } = useStore()
   const [c, setC] = useState<Company | null>(company)
   const [busy, setBusy] = useState(false)
-  useEffect(() => { if (company && !c) { const n = !company.name || company.name === 'Your Company' || company.name === 'Champion Locksmith' ? { ...company, name: 'Legend Locksmith Inc.' } : company; setC(n.paymentInstructions ? n : { ...n, paymentInstructions: 'We accept all major credit cards (on site or by phone), cash and checks. Please make checks payable to Legend Locksmith Inc.' }) } }, [company])
+  useEffect(() => { if (company && !c) { const n = !company.name || company.name === 'Your Company' || company.name === 'Champion Locksmith' ? { ...company, name: 'Legend Locksmith Inc.' } : company; setC(n.paymentInstructions ? n : { ...n, paymentInstructions: 'We accept all major credit cards (on site or by phone), cash, checks and Zelle. Please make checks payable to Legend Locksmith Inc.' }) } }, [company])
   if (!invoicesEnabled()) return <InvoicesPage />
   if (!c) return <div className="page"><div className="loading">Loading…</div></div>
   const owner = me?.role === 'owner'

@@ -402,7 +402,7 @@ function PaymentModal({ job, onClose, onDone, userId }: { job: Job; onClose: () 
           {PAY_METHODS.map((m) => <button type="button" key={m} className={method === m ? 'on' : ''} onClick={() => setMethod(m)}>{PAY_LABEL[m]}</button>)}
         </div>
       </div>
-      <Field label={method === 'credit_card' ? 'Cardknox reference number' : method === 'check' ? 'Check number' : method === 'cash' ? 'Receipt or note (optional)' : 'Reference'}>
+      <Field label={method === 'credit_card' ? 'Cardknox reference number' : method === 'check' ? 'Check number' : method === 'zelle' ? 'Zelle confirmation number' : method === 'cash' ? 'Receipt or note (optional)' : 'Reference'}>
         <input id="pm-ref" className="mono" value={ref} onChange={(e) => setRef(e.target.value)} />
       </Field>
       <Field label="Notes"><input id="pm-notes" value={notes} onChange={(e) => setNotes(e.target.value)} /></Field>
