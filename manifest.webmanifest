@@ -1,7 +1,7 @@
 {
   "name": "LockDesk",
   "short_name": "LockDesk",
-  "description": "Champion Locksmith",
+  "description": "Legend Locksmith",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
