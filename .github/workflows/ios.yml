@@ -22,6 +22,7 @@ jobs:
     defaults:
       run:
         working-directory: ios-app
+        shell: bash -eo pipefail {0}
     steps:
       - uses: actions/checkout@v4
 
@@ -60,7 +61,10 @@ jobs:
         run: |
           xcodebuild ${{ steps.proj.outputs.flag }} -scheme App -configuration Release \
             -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
-            CODE_SIGNING_ALLOWED=NO build | tail -n 40
+            -derivedDataPath $RUNNER_TEMP/dd CODE_SIGNING_ALLOWED=NO build | tail -n 40
+          APP=$(find $RUNNER_TEMP/dd -name 'App.app' -type d | head -1)
+          test -n "$APP" && test -f "$APP/public/index.html"
+          echo "Built $APP with the web app inside" 
 
       - name: Build, sign and upload to App Store Connect
         if: env.ASC_KEY_ID != ''
