@@ -1,4 +1,4 @@
-import { APP_NAME, appBase } from './brand'
+import { APP_NAME, appBase, WEB_URL } from './brand'
 import React, { useCallback, useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { initClient, sb, scanSchema, errText } from './db'
@@ -75,6 +75,7 @@ function Login() {
         {msg ? <div className="alert ok">{msg}</div> : null}
         <button className="btn primary full big" disabled={busy}>{busy ? 'One moment…' : mode === 'in' ? 'Sign in' : mode === 'up' ? 'Request access' : 'Ask the owner to reset it'}</button>
         <InstallHint />
+        <div className="legal-links"><a href={WEB_URL + 'privacy.html'} target="_blank" rel="noreferrer">Privacy policy</a><a href={WEB_URL + 'support.html'} target="_blank" rel="noreferrer">Support</a></div>
         <div className="login-links">
           {mode !== 'in' ? <button type="button" className="link" onClick={() => setMode('in')}>Back to sign in</button> : (
             <>

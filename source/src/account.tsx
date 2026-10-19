@@ -1,4 +1,4 @@
-import { APP_NAME } from './brand'
+import { APP_NAME, WEB_URL } from './brand'
 import React, { useState } from 'react'
 import { sb, errText } from './db'
 import { useStore } from './store'
@@ -42,6 +42,7 @@ export function AccountModal({ onClose }: { onClose: () => void }) {
 
       <div className="divider" />
       <button className="btn full" onClick={() => sb.auth.signOut()}>Sign out</button>
+      <div className="legal-links"><a href={WEB_URL + 'privacy.html'} target="_blank" rel="noreferrer">Privacy policy</a><a href={WEB_URL + 'support.html'} target="_blank" rel="noreferrer">Support</a></div>
 
       {approvalEnabled() ? (
         delStep === 0 ? (

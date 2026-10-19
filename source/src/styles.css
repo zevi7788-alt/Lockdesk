@@ -656,3 +656,4 @@ input:focus, select:focus, textarea:focus { border-color: var(--brand); box-shad
 .btn.danger-outline { color: var(--red); border-color: #f2b8b8; background: var(--surface); }
 .btn.danger-outline:hover { background: var(--red-bg); border-color: var(--red); }
 .del-list { margin: 0; padding-left: 20px; font-size: 14px; display: flex; flex-direction: column; gap: 4px; }
+.legal-links { display: flex; gap: 16px; justify-content: center; font-size: 13px; order: 99; } .legal-links a { color: var(--ink-3); }
