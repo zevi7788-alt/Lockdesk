@@ -8,7 +8,7 @@ export type PayMethod = 'credit_card' | 'cash' | 'zelle' | 'check' | 'other'
 
 export const STATUSES: Status[] = ['new', 'scheduled', 'assigned', 'on_the_way', 'arrived', 'completed', 'cancelled']
 export const PRIORITIES: Priority[] = ['low', 'normal', 'high', 'emergency']
-export const PAY_METHODS: PayMethod[] = ['credit_card', 'cash', 'zelle', 'check', 'other']
+export const PAY_METHODS: PayMethod[] = ['credit_card', 'cash', 'check', 'other']
 export const CATEGORIES = ['residential', 'automotive', 'commercial']
 export const SERVICE_TYPES = [
   'Lockout', 'House Lockout', 'Car Lockout', 'Business Lockout', 'Rekey', 'Lock Change', 'Lock Installation',
@@ -393,7 +393,7 @@ export async function recordPayment(job: Job, userId: string, p: { amount: numbe
     putPayAmt(row, p.amount)
     put(row, 'payments', 'status', 'paid')
     put(row, 'payments', 'method', p.method)
-    put(row, 'payments', 'processor', p.method === 'credit_card' ? 'manual' : null)
+    put(row, 'payments', 'processor', p.method === 'credit_card' ? 'cardknox' : null)
     put(row, 'payments', 'ref', p.ref.trim() || null)
     put(row, 'payments', 'by', userId)
     if (col('payments', 'at') && col('payments', 'at') !== 'created_at') put(row, 'payments', 'at', new Date().toISOString())

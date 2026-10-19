@@ -393,7 +393,7 @@ function PaymentModal({ job, onClose, onDone, userId }: { job: Job; onClose: () 
   const [busy, setBusy] = useState(false)
   return (
     <Modal title={`Record payment · ${job.number}`} onClose={onClose}>
-      <p className="muted small">Take the card in your processor or terminal first, then record it here. {APP_NAME} never stores card numbers.</p>
+      <p className="muted small">For cards, run the payment in Cardknox first, then record it here with the Cardknox reference number. {APP_NAME} never stores card numbers.</p>
       {inv && inv.tax > 0 ? <p className="small muted">Includes {money(inv.tax)} sales tax on {money(inv.subtotal)}.</p> : null}
       <Field label="Amount ($)"><input id="pm-amt" type="number" step="0.01" inputMode="decimal" className="mono big-input" value={amount} onChange={(e) => setAmount(e.target.value)} /></Field>
       <div className="field">
@@ -402,7 +402,7 @@ function PaymentModal({ job, onClose, onDone, userId }: { job: Job; onClose: () 
           {PAY_METHODS.map((m) => <button type="button" key={m} className={method === m ? 'on' : ''} onClick={() => setMethod(m)}>{PAY_LABEL[m]}</button>)}
         </div>
       </div>
-      <Field label={method === 'credit_card' ? 'Processor reference (Square / Stripe transaction ID)' : method === 'check' ? 'Check number' : 'Reference'}>
+      <Field label={method === 'credit_card' ? 'Cardknox reference number' : method === 'check' ? 'Check number' : method === 'cash' ? 'Receipt or note (optional)' : 'Reference'}>
         <input id="pm-ref" className="mono" value={ref} onChange={(e) => setRef(e.target.value)} />
       </Field>
       <Field label="Notes"><input id="pm-notes" value={notes} onChange={(e) => setNotes(e.target.value)} /></Field>

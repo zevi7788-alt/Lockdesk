@@ -369,7 +369,7 @@ export function SettingsPage() {
   const { company, emailReady, me, toast, reload } = useStore()
   const [c, setC] = useState<Company | null>(company)
   const [busy, setBusy] = useState(false)
-  useEffect(() => { if (company && !c) setC(!company.name || company.name === 'Your Company' || company.name === 'Champion Locksmith' ? { ...company, name: 'Legend Locksmith Inc.' } : company) }, [company])
+  useEffect(() => { if (company && !c) { const n = !company.name || company.name === 'Your Company' || company.name === 'Champion Locksmith' ? { ...company, name: 'Legend Locksmith Inc.' } : company; setC(n.paymentInstructions ? n : { ...n, paymentInstructions: 'We accept all major credit cards (on site or by phone), cash and checks. Please make checks payable to Legend Locksmith Inc.' }) } }, [company])
   if (!invoicesEnabled()) return <InvoicesPage />
   if (!c) return <div className="page"><div className="loading">Loading…</div></div>
   const owner = me?.role === 'owner'
@@ -386,7 +386,7 @@ export function SettingsPage() {
           <Field label="Email"><input id="co-email" type="email" value={c.email} onChange={set('email')} /></Field>
           <Field label="Website"><input id="co-web" value={c.website} onChange={set('website')} /></Field>
           <Field label="Address" wide><input id="co-addr" value={c.address} onChange={set('address')} /></Field>
-          <Field label="How customers pay you" wide hint="Shown on unpaid invoices, for example your Zelle phone or email and that you accept cards by phone.">
+          <Field label="How customers pay you" wide hint="Shown on unpaid invoices so customers know how to pay.">
             <textarea id="co-pay" rows={2} value={c.paymentInstructions} onChange={set('paymentInstructions')} />
           </Field>
           <Field label="Footer note" wide><input id="co-foot" value={c.footer} onChange={set('footer')} /></Field>
