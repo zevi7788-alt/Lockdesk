@@ -2,7 +2,7 @@ import { APP_NAME, appBase, WEB_URL } from './brand'
 import React, { useCallback, useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { initClient, sb, scanSchema, errText } from './db'
-import { StoreProvider, useStore } from './store'
+import { OFFLINE, StoreProvider, useStore } from './store'
 import { go, useRoute, Brand, Mark } from './ui'
 import { Icon } from './icons'
 import { Calendar, CustomerDetail, Customers, Dashboard, JobDetail, JobsList, Reports, SystemCheck } from './dispatch'
@@ -244,10 +244,22 @@ function TechShell({ canSwitch, onOffice }: { canSwitch: boolean; onOffice: () =
 }
 
 function Router() {
-  const { me, loading, email, error } = useStore()
+  const { me, loading, email, error, reload } = useStore()
   const [techView, setTechView] = useState(() => { try { return localStorage.getItem('lockdesk.techview') === '1' } catch { return false } })
   const setTV = (v: boolean) => { setTechView(v); try { localStorage.setItem('lockdesk.techview', v ? '1' : '0') } catch {}; go('') }
   if (loading && !me) return <div className="splash"><Mark /><span>Loading {APP_NAME}…</span></div>
+  if (!me && error === OFFLINE) {
+    return (
+      <div className="login"><div className="login-card">
+        <Brand big />
+        <h2 className="pending-h">Can't reach the database</h2>
+        <p>Your account is fine. The database service isn't answering right now, so {APP_NAME} will keep retrying on its own.</p>
+        <p className="muted small">If this lasts more than a few minutes, the owner should open supabase.com, pick the project and tap Restart project (or Restore project if it says paused). Nothing is lost.</p>
+        <button className="btn primary full big" onClick={() => reload()}>Try again now</button>
+        <button className="btn ghost full" onClick={() => sb.auth.signOut()}>Sign out</button>
+      </div></div>
+    )
+  }
   if (!me) {
     return (
       <div className="login"><div className="login-card">

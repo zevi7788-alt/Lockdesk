@@ -30,6 +30,8 @@ type Store = {
 const Ctx = createContext<Store>(null as any)
 export const useStore = () => useContext(Ctx)
 
+export const OFFLINE = 'The database is not answering right now. LockDesk will keep retrying on its own every few seconds.'
+
 export function StoreProvider({ userId, email, children, onToast }: { userId: string; email: string; children: React.ReactNode; onToast: (m: string, k?: 'ok' | 'err') => void }) {
   const [state, setState] = useState({ jobs: [] as Job[], customers: [] as Customer[], profiles: [] as Profile[], payments: [] as Payment[], parts: [] as Part[], accounts: new Map<string, AccountInfo>(), requests: [] as AccessRequest[], invoices: [] as Invoice[], company: null as Company | null, emailReady: false })
   const [me, setMe] = useState<Profile | null>(null)
@@ -37,6 +39,8 @@ export function StoreProvider({ userId, email, children, onToast }: { userId: st
   const [error, setError] = useState('')
   const [live, setLive] = useState(false)
   const timer = useRef<any>(null)
+  const retry = useRef<any>(null)
+  const reloadRef = useRef<null | (() => any)>(null)
   const knownJobs = useRef<Set<string> | null>(null)
 
   const reload = useCallback(async () => {
@@ -52,6 +56,7 @@ export function StoreProvider({ userId, email, children, onToast }: { userId: st
         const idc = col('profiles', 'id') || 'id'
         const r = await sb.from('profiles').select('*').eq(idc, userId).maybeSingle()
         if (r.data) mine = toProfile(r.data)
+        else if (r.error) throw new Error(OFFLINE)
       }
       setMe(mine)
       // Remember this site's address so invoice emails link back to it
@@ -70,11 +75,16 @@ export function StoreProvider({ userId, email, children, onToast }: { userId: st
       knownJobs.current = myIds
       setError('')
     } catch (e: any) {
-      setError(e.message || String(e))
+      const m = e?.message || String(e)
+      setError(/503|schema cache|fetch|network|load failed|timed out/i.test(m) ? OFFLINE : m)
+      // Try again on our own while the database is unreachable
+      clearTimeout(retry.current)
+      retry.current = setTimeout(() => reloadRef.current?.(), 15000)
     } finally {
       setLoading(false)
     }
   }, [userId])
+  reloadRef.current = reload
 
   const soon = useCallback(() => {
     clearTimeout(timer.current)
