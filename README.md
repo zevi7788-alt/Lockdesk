@@ -2,7 +2,7 @@
 
 Locksmith dispatch for the office and the technicians in the field.
 
-**Live app:** https://zevi7788-alt.github.io/Lockdesk/
+**Live app:** https://legendlocksmith.netlify.app/ (backup copy: https://zevi7788-alt.github.io/Lockdesk/)
 **Owner:** Zevi Neiman (zevineiman@aol.com)
 
 ---
