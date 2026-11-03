@@ -269,7 +269,7 @@ export function JobDetail({ id }: { id: string }) {
             <KV k="Description" v={job.description} />
             <KV k="Lock / key" v={job.lockDetails} />
             {job.category === 'automotive' ? (
-              <KV k="Vehicle" v={[job.vehicle.year, job.vehicle.make, job.vehicle.model, job.vehicle.color].filter(Boolean).join(' ') + (job.vehicle.vin ? ` · VIN ${job.vehicle.vin}` : '')} />
+              <KV k="Vehicle" v={[job.vehicle.year, job.vehicle.make, job.vehicle.model, job.vehicle.color].filter(Boolean).join(' ') + (job.vehicle.vin ? ` · ${col('jobs', 'v_vin') === 'vehicle_plate' ? 'Plate' : 'VIN'} ${job.vehicle.vin}` : '')} />
             ) : null}
           </div>
           <div className="panel">

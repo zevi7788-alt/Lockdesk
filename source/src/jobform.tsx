@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react'
 import { useStore } from './store'
 import { Field, go } from './ui'
 import { CATEGORIES, Job, JobForm, PRIORITIES, SERVICE_TYPES, emptyJobForm, jobToForm, saveJob, titleCase, Customer } from './model'
-import { has } from './db'
+import { has, col } from './db'
 
 export function JobFormPage({ existing, prefill }: { existing?: Job; prefill?: Customer }) {
   const { userId, techs, customers, toast, reload } = useStore()
@@ -126,7 +126,7 @@ export function JobFormPage({ existing, prefill }: { existing?: Job; prefill?: C
             <Field label="Make"><input id="jf-make" value={f.make} onChange={set('make')} /></Field>
             <Field label="Model"><input id="jf-model" value={f.model} onChange={set('model')} /></Field>
             <Field label="Color"><input id="jf-color" value={f.color} onChange={set('color')} /></Field>
-            <Field label="VIN" wide><input id="jf-vin" className="mono" value={f.vin} onChange={(e) => setF({ ...f, vin: e.target.value.toUpperCase() })} /></Field>
+            <Field label={col('jobs', 'v_vin') === 'vehicle_plate' ? 'License plate' : 'VIN'} wide><input id="jf-vin" className="mono" value={f.vin} onChange={(e) => setF({ ...f, vin: e.target.value.toUpperCase() })} /></Field>
           </div>
         </fieldset>
       ) : null}

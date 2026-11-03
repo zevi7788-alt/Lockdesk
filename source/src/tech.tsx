@@ -1,3 +1,4 @@
+import { col } from './db'
 import React, { useEffect, useState } from 'react'
 import { useStore } from './store'
 import { Empty, Field, Modal, PriorityBadge, StatusBadge } from './ui'
@@ -112,7 +113,7 @@ export function TechJob({ id, back }: { id: string; back: () => void }) {
         <div className="ti"><span className="k">Service</span><span>{[job.serviceType, titleCase(job.category)].filter(Boolean).join(' · ') || 'Not set'}</span></div>
         <div className="ti"><span className="k">Address</span><span>{job.fullAddress || 'Not set'}</span></div>
         {job.description ? <div className="ti"><span className="k">Description</span><span>{job.description}</span></div> : null}
-        {vehicle || v.vin ? <div className="ti"><span className="k">Vehicle</span><span>{vehicle}{v.vin ? <><br /><span className="mono">VIN {v.vin}</span></> : null}</span></div> : null}
+        {vehicle || v.vin ? <div className="ti"><span className="k">Vehicle</span><span>{vehicle}{v.vin ? <><br /><span className="mono">{col('jobs', 'v_vin') === 'vehicle_plate' ? 'Plate' : 'VIN'} {v.vin}</span></> : null}</span></div> : null}
         {job.lockDetails ? <div className="ti"><span className="k">Lock / key</span><span>{job.lockDetails}</span></div> : null}
         {job.techNotes ? <div className="ti"><span className="k">Notes</span><span>{job.techNotes}</span></div> : null}
         <div className="ti"><span className="k">Estimate</span><span className="mono">{money(job.estimate)}</span></div>

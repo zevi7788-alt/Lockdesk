@@ -68,8 +68,8 @@ export const SPEC: Record<string, Record<string, string[]>> = {
     v_model: ['vehicle_model'],
     v_year: ['vehicle_year'],
     v_color: ['vehicle_color'],
-    v_vin: ['vehicle_vin', 'vin'],
-    lock_details: ['lock_key_details', 'lock_details', 'key_details', 'lock_key_info', 'lock_info'],
+    v_vin: ['vehicle_vin', 'vin', 'vehicle_plate'],
+    lock_details: ['lock_or_key_details', 'lock_key_details', 'lock_details', 'key_details', 'lock_key_info', 'lock_info'],
     estimate: ['estimated_amount', 'estimate_amount', 'estimated_price', 'estimate', 'estimated_amount_cents', 'estimate_cents'],
     final: ['final_amount', 'final_price', 'final_amount_cents', 'final_cents'],
     payment_status: ['payment_status'],
@@ -160,7 +160,7 @@ export type Schema = {
   scannedAt: string
 }
 
-const SCHEMA_KEY = 'lockdesk.schema.v6'
+const SCHEMA_KEY = 'lockdesk.schema.v7'
 export let schema: Schema = { version: 3, tables: {}, cols: {}, allCols: {}, scannedAt: '' }
 
 function missingColumn(err: any) {
