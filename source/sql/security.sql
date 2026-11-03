@@ -228,7 +228,7 @@ begin
   if p_user = auth.uid() then raise exception 'You cannot remove your own account here.'; end if;
   update public.profiles set approved = false, approved_at = null, approved_by = null where id = p_user;
   -- Block sign in completely; history (jobs, payments) stays intact.
-  update auth.users set banned_until = 'infinity' where id = p_user;
+  update auth.users set banned_until = '2999-01-01'::timestamptz where id = p_user;
   update public.access_requests set status = 'dismissed', handled_by = auth.uid(), handled_at = now()
    where user_id = p_user and status = 'open';
 end $$;
@@ -275,7 +275,7 @@ begin
     -- Their name is on past jobs: remove access and personal details, keep job history.
     update public.profiles set approved = false where id = v_uid;
     update auth.users
-       set banned_until = 'infinity',
+       set banned_until = '2999-01-01'::timestamptz,
            email = 'deleted+' || replace(v_uid::text, '-', '') || '@deleted.invalid',
            encrypted_password = null
      where id = v_uid;

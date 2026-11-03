@@ -615,6 +615,8 @@ const rpc = async (fn: string, args?: any) => {
 
 export const approveUser = (id: string, role: Role) => rpc('ld_approve_user', { p_user: id, p_role: role })
 export const removeUser = (id: string) => rpc('ld_remove_user', { p_user: id })
+// Deletes a pending sign up (or blocks it if their name is on records). Returns 'deleted' or 'blocked'.
+export const denyUser = (id: string) => rpc('ld_deny_user', { p_user: id }) as Promise<string>
 export const setUserPassword = (id: string, pw: string) => rpc('ld_set_user_password', { p_user: id, p_password: pw })
 export const deleteMyAccount = () => rpc('ld_delete_my_account')
 export async function dismissRequest(id: string) {

@@ -4,7 +4,7 @@ import { useStore } from './store'
 import { Empty, Field, Modal } from './ui'
 import { SetupScript } from './setup'
 import {
-  Profile, Role, approvalEnabled, approveUser, createMember, dismissRequest, fmtDateTime, removeUser, setRole,
+  Profile, Role, approvalEnabled, approveUser, createMember, denyUser, dismissRequest, fmtDateTime, removeUser, setRole,
   setUserPassword, tempPassword, titleCase,
 } from './model'
 
@@ -80,8 +80,31 @@ function AddMemberModal({ onClose }: { onClose: () => void }) {
   )
 }
 
+function DeniedModal({ who, onClose }: { who: { name: string; email: string; auto: boolean }; onClose: () => void }) {
+  const { company } = useStore()
+  const co = company?.name || 'our company'
+  const subject = `Your ${APP_NAME} access request was denied`
+  const body = `Hi ${who.name && who.name !== who.email ? who.name.split(' ')[0] : 'there'},\n\nYour request to access ${APP_NAME} was denied, and the account you created has been deleted.\n\n${APP_NAME} is only for ${co} staff. If you think this was a mistake, please contact the office.\n\n${co}`
+  const href = `mailto:${encodeURIComponent(who.email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+  return (
+    <Modal title="Request denied" onClose={onClose}>
+      <div className="alert ok">{who.name || who.email}'s account was deleted.</div>
+      {who.auto ? (
+        <p className="small muted">A denial email was sent to {who.email}.</p>
+      ) : (
+        <>
+          <p className="small muted">Tap below to send them the denial email from your own mail app. It's already written for you.</p>
+          <a className="btn primary full big" href={href} onClick={() => setTimeout(onClose, 400)}>Email {who.email}</a>
+        </>
+      )}
+      <button className="btn ghost full" onClick={onClose}>Done</button>
+    </Modal>
+  )
+}
+
 export function Team() {
-  const { profiles, me, toast, reload, accounts, requests } = useStore()
+  const { profiles, me, toast, reload, accounts, requests, emailReady } = useStore()
+  const [denied, setDenied] = useState<{ name: string; email: string; auto: boolean } | null>(null)
   const owner = me?.role === 'owner' && me.approved
   const enabled = approvalEnabled()
   const [pwFor, setPwFor] = useState<{ id: string; name: string } | null>(null)
@@ -149,7 +172,10 @@ export function Team() {
                       </select>
                       <button className="btn primary" disabled={!!busy} onClick={() => act('ap' + p.id, () => approveUser(p.id, r), `${p.name} approved as ${titleCase(r)}`)}>Approve</button>
                       {confirm === 'deny' + p.id ? (
-                        <button className="btn danger" disabled={!!busy} onClick={() => act('dn' + p.id, () => removeUser(p.id), `${p.name} denied`)}>Confirm deny</button>
+                        <button className="btn danger" disabled={!!busy} onClick={() => {
+                          const who = { name: p.name, email: emailOf(p) || '', auto: emailReady }
+                          act('dn' + p.id, async () => { await denyUser(p.id); if (who.email) setDenied(who) }, `${p.name} denied`)
+                        }}>Confirm deny</button>
                       ) : <button className="btn ghost" onClick={() => setConfirm('deny' + p.id)}>Deny</button>}
                     </div>
                   </div>
@@ -223,6 +249,7 @@ export function Team() {
 
       {pwFor ? <PasswordModal person={pwFor} email={accounts.get(pwFor.id)?.email || ''} onClose={() => setPwFor(null)} /> : null}
       {adding ? <AddMemberModal onClose={() => setAdding(false)} /> : null}
+      {denied ? <DeniedModal who={denied} onClose={() => setDenied(null)} /> : null}
     </div>
   )
 }
