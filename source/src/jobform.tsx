@@ -1,8 +1,11 @@
 import React, { useMemo, useState } from 'react'
 import { useStore } from './store'
 import { Field, go } from './ui'
-import { CATEGORIES, Job, JobForm, PRIORITIES, SERVICE_TYPES, emptyJobForm, jobToForm, saveJob, titleCase, Customer } from './model'
+import { CATEGORIES, Job, JobForm, PRIORITIES, SERVICE_TYPES, emptyJobForm, jobToForm, saveJob, titleCase, Customer, fmtSpan } from './model'
 import { has, col } from './db'
+
+// Common arrival windows (start, end)
+const WINDOWS: [string, string][] = [['08:00', '10:00'], ['10:00', '12:00'], ['12:00', '14:00'], ['14:00', '16:00'], ['16:00', '18:00'], ['18:00', '20:00']]
 
 export function JobFormPage({ existing, prefill }: { existing?: Job; prefill?: Customer }) {
   const { userId, techs, customers, toast, reload } = useStore()
@@ -12,6 +15,7 @@ export function JobFormPage({ existing, prefill }: { existing?: Job; prefill?: C
     if (prefill) Object.assign(f, { customerId: prefill.id, name: prefill.name, phone: prefill.phone, email: prefill.email, address: prefill.address, city: prefill.city, state: prefill.state || f.state, zip: prefill.zip })
     return f
   })
+  const windows = has('jobs', 'scheduled_end')
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState('')
   const [showMatches, setShowMatches] = useState(true)
@@ -153,8 +157,21 @@ export function JobFormPage({ existing, prefill }: { existing?: Job; prefill?: C
           {!f.asap ? (
             <>
               <Field label="Date"><input id="jf-date" type="date" value={f.date} onChange={set('date')} /></Field>
-              <Field label="Time"><input id="jf-time" type="time" value={f.time} onChange={set('time')} /></Field>
+              <Field label={f.endTime ? 'Arrive from' : 'Time'}><input id="jf-time" type="time" value={f.time} onChange={(e) => setF({ ...f, time: e.target.value, endTime: f.endTime && f.endTime <= e.target.value ? '' : f.endTime })} /></Field>
+              {windows ? <Field label="Until (optional)"><input id="jf-end" type="time" value={f.endTime} onChange={set('endTime')} /></Field> : null}
             </>
+          ) : null}
+          {!f.asap && windows ? (
+            <div className="field span-all">
+              <span className="flabel">Arrival window</span>
+              <div className="chips">
+                {WINDOWS.map(([a, b]) => (
+                  <button key={a} type="button" className={'chip' + (f.time === a && f.endTime === b ? ' on' : '')} onClick={() => setF({ ...f, time: a, endTime: b })}>{fmtSpan(new Date(`2000-01-01T${a}:00`), new Date(`2000-01-01T${b}:00`))}</button>
+                ))}
+                <button type="button" className={'chip' + (f.time && !f.endTime ? ' on' : '')} onClick={() => setF({ ...f, endTime: '' })}>Exact time</button>
+              </div>
+              {f.endTime && f.time && f.endTime <= f.time ? <span className="fhint">The end time has to be after the start time.</span> : null}
+            </div>
           ) : null}
           <Field label="Technician">
             <select id="jf-tech" value={f.techId} onChange={set('techId')}>

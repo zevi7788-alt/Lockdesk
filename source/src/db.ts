@@ -58,6 +58,7 @@ export const SPEC: Record<string, Record<string, string[]>> = {
     state: ['state', 'service_state'],
     zip: ['zip', 'zip_code', 'postal_code', 'service_zip'],
     scheduled_at: ['scheduled_at', 'scheduled_for', 'scheduled_start', 'scheduled_datetime', 'appointment_at'],
+    scheduled_end: ['scheduled_end', 'window_end', 'scheduled_until', 'arrival_window_end'],
     scheduled_date: ['scheduled_date', 'date'],
     scheduled_time: ['scheduled_time', 'time'],
     asap: ['is_asap', 'asap'],
@@ -160,7 +161,7 @@ export type Schema = {
   scannedAt: string
 }
 
-const SCHEMA_KEY = 'lockdesk.schema.v7'
+const SCHEMA_KEY = 'lockdesk.schema.v8'
 export let schema: Schema = { version: 3, tables: {}, cols: {}, allCols: {}, scannedAt: '' }
 
 function missingColumn(err: any) {

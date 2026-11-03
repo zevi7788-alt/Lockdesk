@@ -32,7 +32,7 @@ export type Customer = {
 export type Job = {
   id: string; number: string; customerId: string | null; customerName: string; phone: string; email: string
   address: string; city: string; state: string; zip: string; fullAddress: string
-  serviceType: string; category: string; scheduledAt: Date | null; asap: boolean; priority: Priority; status: Status
+  serviceType: string; category: string; scheduledAt: Date | null; scheduledEnd: Date | null; asap: boolean; priority: Priority; status: Status
   description: string; vehicle: { make: string; model: string; year: string; color: string; vin: string }
   lockDetails: string; estimate: number | null; final: number | null; payStatus: PayStatus; payMethod: string
   techId: string | null; dispatcherNotes: string; techNotes: string; createdAt: Date | null; completedAt: Date | null
@@ -82,6 +82,13 @@ export function jobNumber(raw: any, id: string) {
   return 'LD-' + id.replace(/-/g, '').slice(0, 6).toUpperCase()
 }
 
+function endFrom(r: any, start: Date | null): Date | null {
+  const v = get(r, 'jobs', 'scheduled_end')
+  if (!v || !start) return null
+  const d = new Date(v)
+  return isNaN(d.getTime()) || d <= start ? null : d
+}
+
 function schedFrom(r: any): Date | null {
   const at = get(r, 'jobs', 'scheduled_at')
   if (at) return new Date(at)
@@ -120,6 +127,7 @@ export function toJob(r: any, custs: Map<string, Customer>, pays: Payment[]): Jo
     serviceType: s(get(r, 'jobs', 'service_type')),
     category: s(get(r, 'jobs', 'category')).toLowerCase(),
     scheduledAt,
+    scheduledEnd: endFrom(r, scheduledAt),
     asap: asapVal === true || asapVal === 'true' || (!scheduledAt && s(get(r, 'jobs', 'priority')) === 'emergency'),
     priority: (s(get(r, 'jobs', 'priority')) || 'normal') as Priority,
     status,
@@ -216,7 +224,7 @@ export type JobForm = {
   name: string; phone: string; email: string
   serviceType: string; category: string
   address: string; city: string; state: string; zip: string
-  date: string; time: string; asap: boolean; priority: Priority
+  date: string; time: string; endTime: string; asap: boolean; priority: Priority
   description: string
   make: string; model: string; year: string; color: string; vin: string
   lockDetails: string; estimate: string; techId: string
@@ -225,7 +233,7 @@ export type JobForm = {
 
 export const emptyJobForm = (): JobForm => ({
   customerId: null, name: '', phone: '', email: '', serviceType: '', category: 'residential',
-  address: '', city: '', state: 'NY', zip: '', date: todayISO(), time: '', asap: false, priority: 'normal',
+  address: '', city: '', state: 'NY', zip: '', date: todayISO(), time: '', endTime: '', asap: false, priority: 'normal',
   description: '', make: '', model: '', year: '', color: '', vin: '', lockDetails: '', estimate: '', techId: '',
   dispatcherNotes: '', techNotes: '',
 })
@@ -243,6 +251,7 @@ export function jobToForm(j: Job): JobForm {
     address: j.address, city: j.city, state: j.state, zip: j.zip,
     date: j.scheduledAt ? todayISO(j.scheduledAt) : todayISO(),
     time: j.scheduledAt ? `${p(j.scheduledAt.getHours())}:${p(j.scheduledAt.getMinutes())}` : '',
+    endTime: j.scheduledEnd ? `${p(j.scheduledEnd.getHours())}:${p(j.scheduledEnd.getMinutes())}` : '',
     asap: j.asap, priority: j.priority, description: j.description,
     make: j.vehicle.make, model: j.vehicle.model, year: j.vehicle.year, color: j.vehicle.color, vin: j.vehicle.vin,
     lockDetails: j.lockDetails, estimate: j.estimate === null ? '' : String(j.estimate), techId: j.techId || '',
@@ -284,6 +293,10 @@ function scheduleInto(row: any, f: JobForm) {
     if (f.asap) put(row, 'jobs', 'scheduled_at', new Date().toISOString())
     else if (f.date) put(row, 'jobs', 'scheduled_at', new Date(`${f.date}T${f.time || '09:00'}:00`).toISOString())
     else put(row, 'jobs', 'scheduled_at', null)
+    if (has('jobs', 'scheduled_end')) {
+      const ok = !f.asap && f.date && f.time && f.endTime && f.endTime > f.time
+      put(row, 'jobs', 'scheduled_end', ok ? new Date(`${f.date}T${f.endTime}:00`).toISOString() : null)
+    }
   } else {
     put(row, 'jobs', 'scheduled_date', f.asap ? todayISO() : f.date || null)
     put(row, 'jobs', 'scheduled_time', f.asap ? null : f.time || null)
@@ -473,7 +486,30 @@ export const money = (n: number | null | undefined) =>
 export function fmtWhen(j: Job) {
   if (j.asap && (!j.scheduledAt || isToday(j.scheduledAt))) return 'ASAP'
   if (!j.scheduledAt) return 'Not scheduled'
+  if (j.scheduledEnd) return fmtDay(j.scheduledAt) + ' ' + fmtSpan(j.scheduledAt, j.scheduledEnd)
   return fmtDateTime(j.scheduledAt)
+}
+// "Today", "Tomorrow" or "Tue, Nov 4"
+export function fmtDay(dt: Date) {
+  if (isToday(dt)) return 'Today'
+  const tm = new Date(); tm.setDate(tm.getDate() + 1)
+  if (todayISO(dt) === todayISO(tm)) return 'Tomorrow'
+  return dt.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+}
+// Arrival window like "2 to 4 PM" or "11 AM to 1 PM"
+export function fmtSpan(a: Date, b: Date) {
+  const part = (d: Date, ampm: boolean) => {
+    const h = d.getHours() % 12 || 12, m = d.getMinutes()
+    return `${h}${m ? ':' + String(m).padStart(2, '0') : ''}${ampm ? (d.getHours() < 12 ? ' AM' : ' PM') : ''}`
+  }
+  const same = (a.getHours() < 12) === (b.getHours() < 12)
+  return `${part(a, !same)} to ${part(b, true)}`
+}
+// Short time for calendars: window if there is one
+export function fmtSlot(j: Job) {
+  if (j.asap) return 'ASAP'
+  if (!j.scheduledAt) return ''
+  return j.scheduledEnd ? fmtSpan(j.scheduledAt, j.scheduledEnd) : fmtTime(j.scheduledAt)
 }
 export function isToday(dt: Date) { return todayISO(dt) === todayISO() }
 export function fmtTime(dt: Date) { return dt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) }

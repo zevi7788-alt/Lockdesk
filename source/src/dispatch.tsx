@@ -4,7 +4,7 @@ import { useStore } from './store'
 import { Empty, Field, JobCard, KV, Modal, PayBadge, PriorityBadge, Section, StatusBadge, go } from './ui'
 import {
   ACTIVE, Job, JobEvent, PAY_LABEL, PAY_METHODS, PayMethod, STATUSES, STATUS_LABEL,
-  fmtDateTime, fmtTime, fmtWhen, isToday, loadEvents, loadNotifications, mapsHref, money, recordPayment,
+  fmtDateTime, fmtSlot, fmtTime, fmtWhen, isToday, loadEvents, loadNotifications, mapsHref, money, recordPayment,
   setPayStatus, setStatus, telHref, titleCase, todayISO, updateJob, saveCustomer, Status, Customer,
 } from './model'
 import { col, get, schema, scanSchema, SPEC } from './db'
@@ -582,7 +582,7 @@ export function Calendar() {
           <h3>{new Date(day + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</h3>
           {dayJobs.length ? dayJobs.map((j) => (
             <a key={j.id} className="ag-row" href={'#/jobs/' + j.id}>
-              <span className={'mono ag-t' + (j.asap ? ' asap' : '')}>{j.asap ? 'ASAP' : j.scheduledAt ? fmtTime(j.scheduledAt) : ''}</span>
+              <span className={'mono ag-t' + (j.asap ? ' asap' : '')}>{fmtSlot(j)}</span>
               <span className="ag-b"><strong>{j.customerName}</strong> · {j.serviceType}<span className="sub">{techName(j.techId)} · {j.fullAddress}</span></span>
               <StatusBadge status={j.status} />
             </a>
