@@ -1,4 +1,4 @@
-import { appBase } from './brand'
+import { appBase, WEB_URL } from './brand'
 import { sb, col, get, put, getAmt, putAmt, has, schema, errText, SUPABASE_URL, SUPABASE_KEY, fetchAll } from './db'
 
 export type Role = 'owner' | 'dispatcher' | 'technician'
@@ -650,17 +650,21 @@ export async function createMember(p: { name: string; email: string; password: s
   const tmp = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false, storageKey: 'lockdesk-add-member' },
   })
+  // Opens a 10 minute window for exactly this email; every other sign up is refused by the database.
+  await allowSignup(p.email.trim())
   const { data, error } = await tmp.auth.signUp({
     email: p.email.trim(), password: p.password,
     options: { data: { full_name: p.name.trim(), name: p.name.trim() } },
   })
   if (error) {
+    if (/signups? not allowed|signup.*disabled/i.test(String(error.message)))
+      throw new Error('Supabase is set to block all new accounts, including yours. In Supabase, go to Authentication, Sign In / Providers, and turn "Allow new users to sign up" back on. LockDesk itself still refuses anyone you did not create.')
     if (/confirmation email|sending.*email/i.test(String(error.message)))
       throw new Error('Supabase could not send its confirmation email. In Supabase, turn off "Confirm email" (Authentication, Sign In / Providers, Email). Owner approval replaces it.')
     throw new Error(errText(error))
   }
   const user = data?.user
-  if (!user || (Array.isArray(user.identities) && user.identities.length === 0)) throw new Error('That email already has an account. Find it in the list and approve it there.')
+  if (!user || (Array.isArray(user.identities) && user.identities.length === 0)) throw new Error('That email already has an account. If they were deactivated, find them under Deactivated and tap Reactivate.')
   try { await tmp.auth.signOut() } catch {}
   // Give the database a moment to create the profile row
   for (let i = 0; i < 6; i++) {
@@ -694,3 +698,56 @@ export async function deleteCustomer(id: string) {
     throw new Error(errText(error))
   }
 }
+
+// ---------------- Devices (each account only works on phones the owner set up) ----------------
+
+const DEVICE_KEY = 'lockdesk.device'
+export function getDeviceSecret(): string {
+  try { return localStorage.getItem(DEVICE_KEY) || '' } catch { return '' }
+}
+export function setDeviceSecret(v: string) {
+  try { if (v) localStorage.setItem(DEVICE_KEY, v); else localStorage.removeItem(DEVICE_KEY) } catch {}
+}
+export function newDeviceSecret() {
+  const a = new Uint8Array(32)
+  crypto.getRandomValues(a)
+  return Array.from(a, (b) => b.toString(16).padStart(2, '0')).join('')
+}
+export function deviceLabel() {
+  const ua = navigator.userAgent
+  const kind = /iPhone/.test(ua) ? 'iPhone' : /iPad/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1) ? 'iPad'
+    : /Android/.test(ua) ? (/Mobile/.test(ua) ? 'Android phone' : 'Android tablet') : /Windows/.test(ua) ? 'Windows computer'
+    : /Macintosh/.test(ua) ? 'Mac' : 'Device'
+  return `${kind} · set up ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+}
+export const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1)
+export const isStandalone = () => { try { return matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone === true } catch { return false } }
+
+export type DeviceStatus = { ok: boolean; email?: string; name?: string }
+export async function deviceStatus(secret: string): Promise<DeviceStatus> {
+  if (!secret) return { ok: false }
+  const { data, error } = await sb.rpc('ld_device_status', { p_secret: secret })
+  if (error) throw new Error(errText(error))
+  return (data || { ok: false }) as DeviceStatus
+}
+export async function enrollDevice(token: string) {
+  const secret = newDeviceSecret()
+  const { data, error } = await sb.rpc('ld_enroll_device', { p_token: token, p_secret: secret, p_label: deviceLabel() })
+  if (error) throw new Error(errText(error))
+  setDeviceSecret(secret)
+  return data as { email: string; name: string }
+}
+export const bindSession = (secret: string) => rpc('ld_bind_session', { p_secret: secret })
+export const allowSignup = (email: string) => rpc('ld_allow_signup', { p_email: email })
+export const newDeviceLink = (userId: string) => rpc('ld_new_device_link', { p_user: userId }) as Promise<string>
+export const revokeDevice = (id: string) => rpc('ld_revoke_device', { p_device: id })
+export const deactivateUser = (id: string) => rpc('ld_deactivate_user', { p_user: id })
+export const reactivateUser = (id: string, role: Role) => rpc('ld_reactivate_user', { p_user: id, p_role: role }) as Promise<string>
+export type DeviceRow = { kind: 'device' | 'link'; id: string; userId: string; label: string; createdAt: Date | null; lastSeen: Date | null; expiresAt: Date | null }
+export async function listDevices(): Promise<DeviceRow[]> {
+  const { data, error } = await sb.rpc('ld_list_devices')
+  if (error || !data) return []
+  const dt = (v: any) => (v ? new Date(v) : null)
+  return data.map((r: any) => ({ kind: r.kind, id: r.id, userId: r.user_id, label: r.label, createdAt: dt(r.created_at), lastSeen: dt(r.last_seen_at), expiresAt: dt(r.expires_at) }))
+}
+export const deviceLinkUrl = (token: string) => `${WEB_URL}#/enroll/${token}`

@@ -8,86 +8,12 @@ import { Icon } from './icons'
 import { Calendar, CustomerDetail, Customers, Dashboard, JobDetail, JobsList, Reports, SystemCheck } from './dispatch'
 import { Team, useTeamAlerts } from './team'
 import { AccountModal, PendingScreen } from './account'
-import { requestPasswordReset } from './model'
-import { InstallHint } from './install'
+import { bindSession, deviceStatus, getDeviceSecret, isIOS, isStandalone, setDeviceSecret } from './model'
+import { EnrollScreen, Landing, Login } from './access'
 import { logError } from './backup'
 import { InvoiceDetail, InvoicesPage, PublicInvoice, SettingsPage } from './invoices'
 import { JobFormPage } from './jobform'
 import { TechHome, TechJob } from './tech'
-
-// ---------------- Login ----------------
-
-function Login() {
-  const [mode, setMode] = useState<'in' | 'up' | 'reset'>('in')
-  const [email, setEmail] = useState('')
-  const [pw, setPw] = useState('')
-  const [name, setName] = useState('')
-  const [msg, setMsg] = useState('')
-  const [err, setErr] = useState('')
-  const [busy, setBusy] = useState(false)
-
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setErr(''); setMsg(''); setBusy(true)
-    try {
-      if (mode === 'in') {
-        const { error } = await sb.auth.signInWithPassword({ email: email.trim(), password: pw })
-        if (error) throw error
-      } else if (mode === 'up') {
-        const { data, error } = await sb.auth.signUp({
-          email: email.trim(), password: pw,
-          options: { data: { full_name: name.trim(), name: name.trim() }, emailRedirectTo: appBase() },
-        })
-        if (error) throw error
-        if (!data.session) setMsg('Request sent. The owner has to approve your account before you can sign in.')
-      } else {
-        const how = await requestPasswordReset(email)
-        setMsg(how === 'owner'
-          ? 'Request sent to the owner. They will set a temporary password and send it to you.'
-          : 'If that email has an account, a reset link is on its way.')
-      }
-    } catch (e: any) {
-      setErr(errText(e))
-    } finally { setBusy(false) }
-  }
-
-  return (
-    <div className="login split">
-      <aside className="login-art" aria-hidden="true">
-        <Brand big />
-        <div className="login-art-foot">
-          <p>Dispatch, field work, invoices and payments in one place.</p>
-          <span>Authorized staff only</span>
-        </div>
-      </aside>
-      <form className="login-card" onSubmit={submit}>
-        <Brand big />
-        <h1 className="login-h">{mode === 'in' ? 'Sign in' : mode === 'up' ? 'Request access' : 'Reset password'}</h1>
-        <p className="muted">{mode === 'in' ? 'Welcome back. Enter your details to continue.' : mode === 'up' ? 'Request access. The owner approves every account.' : 'Forgot your password? The owner will reset it for you.'}</p>
-        {mode === 'up' ? (
-          <label className="field"><span className="flabel">Full name</span><input id="lg-name" value={name} onChange={(e) => setName(e.target.value)} required autoComplete="name" /></label>
-        ) : null}
-        <label className="field"><span className="flabel">Email</span><input id="lg-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" /></label>
-        {mode !== 'reset' ? (
-          <label className="field"><span className="flabel">Password</span><input id="lg-pw" type="password" value={pw} onChange={(e) => setPw(e.target.value)} required minLength={mode === 'up' ? 8 : 6} autoComplete={mode === 'in' ? 'current-password' : 'new-password'} /></label>
-        ) : null}
-        {err ? <div className="alert err">{err}</div> : null}
-        {msg ? <div className="alert ok">{msg}</div> : null}
-        <button className="btn primary full big" disabled={busy}>{busy ? 'One moment…' : mode === 'in' ? 'Sign in' : mode === 'up' ? 'Request access' : 'Ask the owner to reset it'}</button>
-        <InstallHint />
-        <div className="legal-links"><a href={WEB_URL + 'privacy.html'} target="_blank" rel="noreferrer">Privacy policy</a><a href={WEB_URL + 'support.html'} target="_blank" rel="noreferrer">Support</a></div>
-        <div className="login-links">
-          {mode !== 'in' ? <button type="button" className="link" onClick={() => setMode('in')}>Back to sign in</button> : (
-            <>
-              <button type="button" className="link" onClick={() => setMode('up')}>Request access</button>
-              <button type="button" className="link" onClick={() => setMode('reset')}>Forgot password</button>
-            </>
-          )}
-        </div>
-      </form>
-    </div>
-  )
-}
 
 function NewPassword({ done }: { done: () => void }) {
   const [pw, setPw] = useState('')
@@ -282,12 +208,18 @@ function Router() {
 
 type Toast = { id: number; msg: string; kind: 'ok' | 'err' }
 
+type Dev = { state: 'checking' | 'ok' | 'none' | 'off' | 'offline'; email?: string; name?: string }
+
 function App() {
   const [session, setSession] = useState<any>(undefined)
+  const [dev, setDev] = useState<Dev>({ state: 'checking' })
+  const [bound, setBound] = useState<string>('')          // session id that is tied to this device
+  const [bindErr, setBindErr] = useState('')
   const [ready, setReady] = useState(false)
   const [scanErr, setScanErr] = useState('')
   const [recovery, setRecovery] = useState(false)
   const [toasts, setToasts] = useState<Toast[]>([])
+  const route = useRoute()
 
   const toast = useCallback((msg: string, kind: 'ok' | 'err' = 'ok') => {
     if (kind === 'err') logError(msg)
@@ -295,6 +227,29 @@ function App() {
     setToasts((t) => [...t, { id, msg, kind }])
     setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), kind === 'err' ? 7000 : 3200)
   }, [])
+
+  // Is this phone one the owner set up? Checked at start, every minute, and when the app comes back.
+  const checkDevice = useCallback(async () => {
+    const secret = getDeviceSecret()
+    if (!secret) { setDev({ state: 'none' }); return }
+    try {
+      const st = await deviceStatus(secret)
+      if (st.ok) setDev({ state: 'ok', email: st.email, name: st.name })
+      else {
+        setDeviceSecret('')
+        setDev({ state: 'off' })
+        try { await sb.auth.signOut({ scope: 'local' }) } catch {}
+      }
+    } catch { setDev((d) => (d.state === 'ok' ? d : { state: 'offline' })) }
+  }, [])
+
+  useEffect(() => {
+    checkDevice()
+    const t = setInterval(checkDevice, 60000)
+    const vis = () => { if (document.visibilityState === 'visible') checkDevice() }
+    document.addEventListener('visibilitychange', vis)
+    return () => { clearInterval(t); document.removeEventListener('visibilitychange', vis) }
+  }, [checkDevice])
 
   useEffect(() => {
     sb.auth.getSession().then(({ data }: any) => setSession(data.session))
@@ -305,17 +260,45 @@ function App() {
     return () => data.subscription.unsubscribe()
   }, [])
 
-  const uid = session?.user?.id
+  // Tie each login session to this phone. Without it the database shows nothing.
+  const sid = (() => { try { return JSON.parse(atob(String(session?.access_token || '').split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).session_id || '' } catch { return '' } })()
   useEffect(() => {
-    if (!uid) { setReady(false); return }
+    if (!session || dev.state !== 'ok' || !sid || bound === sid) return
+    setBindErr('')
+    bindSession(getDeviceSecret())
+      .then(() => setBound(sid))
+      .catch(async (e) => { setBindErr(e.message || String(e)); try { await sb.auth.signOut({ scope: 'local' }) } catch {} })
+  }, [session, dev.state, sid, bound])
+
+  const uid = session?.user?.id
+  const live = !!uid && bound === sid && !!sid
+  useEffect(() => {
+    if (!live) { setReady(false); return }
     setScanErr('')
     scanSchema().then(() => setReady(true)).catch((e) => setScanErr(errText(e)))
-  }, [uid])
+  }, [live, uid])
 
+  // Signed in somewhere this device isn't allowed: sign out of this browser.
+  useEffect(() => {
+    if (session && (dev.state === 'none' || dev.state === 'off')) sb.auth.signOut({ scope: 'local' }).catch(() => {})
+  }, [session, dev.state])
+
+  const enroll = route[0] === 'enroll' && route[1]
   let body: React.ReactNode
-  if (session === undefined) body = <div className="splash"><Mark /><span>Loading {APP_NAME}…</span></div>
+  if (enroll) body = <EnrollScreen token={route[1]} onDone={() => { go(''); checkDevice() }} />
+  else if (dev.state === 'checking' || session === undefined) body = <div className="splash"><Mark /><span>Loading {APP_NAME}…</span></div>
+  else if (dev.state === 'none') body = <Landing />
+  else if (dev.state === 'off') body = <Landing notice="Access on this device was turned off by the owner." />
+  else if (dev.state === 'offline') body = (
+    <div className="login"><div className="login-card"><Brand big />
+      <h2 className="pending-h">Can't reach the database</h2>
+      <p>{APP_NAME} will keep retrying on its own.</p>
+      <button className="btn primary full big" onClick={checkDevice}>Try again now</button>
+    </div></div>
+  )
   else if (recovery && session) body = <NewPassword done={() => { setRecovery(false); toast('Password updated') }} />
-  else if (!session) body = <Login />
+  else if (!session) body = <Login email={dev.email || ''} name={dev.name} error={bindErr} />
+  else if (!live) body = <div className="splash"><Mark /><span>Checking this device…</span></div>
   else if (scanErr) body = <div className="login"><div className="login-card"><Brand big /><div className="alert err">Could not reach the database: {scanErr}</div><button className="btn full" onClick={() => location.reload()}>Try again</button><button className="btn ghost full" onClick={() => sb.auth.signOut()}>Sign out</button></div></div>
   else if (!ready) body = <div className="splash"><Mark /><span>Connecting to your database…</span></div>
   else body = (
@@ -349,6 +332,9 @@ function boot() {
     return
   }
   initClient()
+  // On an iPhone, a setup link must be finished from the home screen icon (it keeps its own storage).
+  // Without the manifest, Add to Home Screen saves this exact link, so the icon opens it.
+  if (/^#\/enroll\//.test(location.hash) && isIOS() && !isStandalone()) document.querySelector('link[rel="manifest"]')?.remove()
   root.render(pub ? <PublicInvoice token={pub[1]} /> : <App />)
 }
 
