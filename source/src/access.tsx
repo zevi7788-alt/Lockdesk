@@ -11,6 +11,15 @@ const Legal = () => (
 
 // What anyone with the web address sees: what LockDesk is, and no way in.
 export function Landing({ notice }: { notice?: string }) {
+  const [code, setCode] = useState(false)
+  const [val, setVal] = useState('')
+  const [err, setErr] = useState('')
+  const appMode = isStandalone()
+  const useLink = () => {
+    const m = val.trim().match(/enroll\/([a-f0-9]{24,})/i) || val.trim().match(/^([a-f0-9]{24,})$/i)
+    if (!m) { setErr('Paste the whole setup link from your text message.'); return }
+    location.hash = '#/enroll/' + m[1]
+  }
   const features: [string, string, string][] = [
     ['dispatch', 'Live dispatch board', 'Every job, technician and arrival window in one place, updating in real time.'],
     ['jobs', 'Technician app', 'Techs see only their own jobs, with big buttons for on the way, arrived and done.'],
@@ -32,6 +41,17 @@ export function Landing({ notice }: { notice?: string }) {
             <p>There is no sign up. If you work for {APP_TAGLINE}, the owner will create your account and send you a personal setup link for your phone.</p>
           </div>
         </div>
+        {appMode || code ? (
+          <div className="landing-code">
+            <strong>Got a setup link from the owner?</strong>
+            <p className="small">Copy it from your text message and paste it here.</p>
+            <div className="landing-code-row">
+              <input id="ld-code" placeholder="Paste setup link" value={val} onChange={(e) => { setVal(e.target.value); setErr('') }} autoCapitalize="none" autoCorrect="off" />
+              <button className="btn primary" onClick={useLink}>Continue</button>
+            </div>
+            {err ? <div className="alert err">{err}</div> : null}
+          </div>
+        ) : <button className="link landing-code-link" onClick={() => setCode(true)}>I have a setup link</button>}
         <div className="landing-grid">
           {features.map(([ic, t, d]) => (
             <div key={t} className="landing-card"><Icon name={ic} /><strong>{t}</strong><p>{d}</p></div>
@@ -47,7 +67,7 @@ export function Landing({ notice }: { notice?: string }) {
 export function EnrollScreen({ token, onDone }: { token: string; onDone: () => void }) {
   const [phase, setPhase] = useState<'check' | 'ready' | 'busy' | 'err'>('check')
   const [err, setErr] = useState('')
-  const [browserOk, setBrowserOk] = useState(false)
+  const [copied, setCopied] = useState(false)
   const iosBrowser = isIOS() && !isStandalone()
 
   useEffect(() => {
@@ -73,7 +93,7 @@ export function EnrollScreen({ token, onDone }: { token: string; onDone: () => v
           <div className="alert err">{err}</div>
           <p className="muted small">Each setup link works one time, on the first phone that uses it. Ask the owner to send you a new one.</p>
         </>
-      ) : iosBrowser && !browserOk ? (
+      ) : iosBrowser ? (
         <>
           <p>This link connects {APP_NAME} to <strong>this phone only</strong>. First put it on your home screen:</p>
           <ol className="steps">
@@ -81,8 +101,8 @@ export function EnrollScreen({ token, onDone }: { token: string; onDone: () => v
             <li>Tap <strong>Add to Home Screen</strong>, then <strong>Add</strong>.</li>
             <li>Open <strong>{APP_NAME}</strong> from your home screen to finish setup.</li>
           </ol>
-          <p className="muted small">Don't open the link on any other phone. It only works once.</p>
-          <button className="link small" onClick={() => setBrowserOk(true)}>Set up in this browser instead</button>
+          <p className="muted small">If the icon opens a page that says "Invitation only", tap <strong>I have a setup link</strong> there and paste this same link.</p>
+          <button className="btn full" onClick={async () => { try { await navigator.clipboard.writeText(location.href); setCopied(true) } catch {} }}>{copied ? 'Link copied' : 'Copy this link'}</button>
         </>
       ) : (
         <>

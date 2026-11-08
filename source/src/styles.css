@@ -696,3 +696,8 @@ input:focus, select:focus, textarea:focus { border-color: var(--brand); box-shad
 .dot.wait { background: var(--accent); }
 .danger-text { color: var(--red); }
 .member-head select { width: auto; flex: none; min-width: 140px; }
+.landing-code { max-width: 640px; margin: -14px 0 32px; padding: 16px 18px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 8px; }
+.landing-code p { margin: 0; color: var(--ink-2); }
+.landing-code-row { display: flex; gap: 8px; }
+.landing-code-row input { flex: 1; min-width: 0; }
+.landing-code-link { margin: -18px 0 28px; display: inline-block; }
