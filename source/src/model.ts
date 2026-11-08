@@ -25,7 +25,7 @@ export const PAY_LABEL: Record<string, string> = {
   credit_card: 'Credit card', cash: 'Cash', zelle: 'Zelle', check: 'Check', other: 'Other',
 }
 
-export type Profile = { id: string; name: string; role: Role; phone: string; email: string; approved: boolean; raw: any }
+export type Profile = { id: string; name: string; role: Role; phone: string; email: string; approved: boolean; archived: boolean; raw: any }
 export type Customer = {
   id: string; name: string; phone: string; email: string; address: string; city: string; state: string; zip: string; notes: string; raw: any
 }
@@ -53,6 +53,7 @@ export function toProfile(r: any): Profile {
     email: s(get(r, 'profiles', 'email')),
     // When the approval update isn't installed yet, everyone counts as approved
     approved: has('profiles', 'approved') ? get(r, 'profiles', 'approved') === true : true,
+    archived: r?.archived === true,
     raw: r,
   }
 }
@@ -751,3 +752,6 @@ export async function listDevices(): Promise<DeviceRow[]> {
   return data.map((r: any) => ({ kind: r.kind, id: r.id, userId: r.user_id, label: r.label, createdAt: dt(r.created_at), lastSeen: dt(r.last_seen_at), expiresAt: dt(r.expires_at) }))
 }
 export const deviceLinkUrl = (token: string) => `${WEB_URL}#/enroll/${token}`
+
+// Owner: permanently delete an account. Returns 'deleted', or 'archived' when their name is on past jobs (kept for records, login erased).
+export const deleteUser = (id: string) => rpc('ld_delete_user', { p_user: id }) as Promise<string>

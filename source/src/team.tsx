@@ -4,7 +4,7 @@ import { useStore } from './store'
 import { Empty, Field, Modal } from './ui'
 import { SetupScript } from './setup'
 import {
-  DeviceRow, Profile, Role, approvalEnabled, createMember, deactivateUser, denyUser, deviceLinkUrl, dismissRequest,
+  DeviceRow, Profile, Role, approvalEnabled, createMember, deactivateUser, deleteUser, deviceLinkUrl, dismissRequest,
   fmtDateTime, listDevices, newDeviceLink, reactivateUser, revokeDevice, setRole, setUserPassword, tempPassword, titleCase,
 } from './model'
 
@@ -119,9 +119,17 @@ export function Team() {
 
   const emailOf = (p: Profile) => accounts.get(p.id)?.email || p.email || ''
   const isOff = (p: Profile) => accounts.get(p.id)?.removed === true
-  const pending = profiles.filter((p) => !p.approved && !isOff(p))
-  const deactivated = profiles.filter((p) => !p.approved && isOff(p))
-  const active = profiles.filter((p) => p.approved)
+  const shown = profiles.filter((p) => !p.archived)
+  const pending = shown.filter((p) => !p.approved && !isOff(p))
+  const deactivated = shown.filter((p) => !p.approved && isOff(p))
+  const active = shown.filter((p) => p.approved)
+  const del = (p: Profile) => act('del' + p.id, async () => {
+    const r = await deleteUser(p.id)
+    toast(r === 'archived' ? `${p.name} deleted. Their name stays on past jobs for your records.` : `${p.name} deleted`)
+  }, '')
+  const DeleteBtn = ({ p }: { p: Profile }) => confirm === 'del' + p.id
+    ? <button className="btn danger" disabled={!!busy} onClick={() => del(p)}>Delete forever</button>
+    : <button className="btn ghost danger-text" onClick={() => setConfirm('del' + p.id)}>Delete</button>
 
   const act = async (key: string, fn: () => Promise<any>, msg: string) => {
     setBusy(key)
@@ -164,9 +172,7 @@ export function Team() {
                 <div><strong>{p.name}</strong><div className="sub">{emailOf(p)}</div></div>
                 <div className="row-actions">
                   <button className="btn" disabled={!!busy} onClick={() => act('re' + p.id, async () => { const token = await reactivateUser(p.id, 'technician'); setLink({ who: { name: p.name, email: emailOf(p) }, token }) }, '')}>Let in as technician</button>
-                  {confirm === 'deny' + p.id
-                    ? <button className="btn danger" disabled={!!busy} onClick={() => act('dn' + p.id, () => denyUser(p.id), `${p.name} deleted`)}>Confirm delete</button>
-                    : <button className="btn ghost" onClick={() => setConfirm('deny' + p.id)}>Delete</button>}
+                  <DeleteBtn p={p} />
                 </div>
               </div>
             ))}
@@ -240,6 +246,7 @@ export function Team() {
                       {!self ? (confirm === 'off' + p.id
                         ? <button className="btn danger" disabled={!!busy} onClick={() => act('off' + p.id, () => deactivateUser(p.id), `${p.name} deactivated. Their devices no longer work.`)}>Confirm deactivate</button>
                         : <button className="btn ghost danger-text" onClick={() => setConfirm('off' + p.id)}>Deactivate</button>) : null}
+                      {!self ? <DeleteBtn p={p} /> : null}
                     </div>
                   </>
                 ) : null}
@@ -260,6 +267,7 @@ export function Team() {
                   <div><strong>{p.name}</strong><div className="sub">{emailOf(p)} · no access</div></div>
                   <div className="row-actions">
                     <select value={r} onChange={(e) => setReRole({ ...reRole, [p.id]: e.target.value as Role })}>{ROLES.map((x) => <option key={x} value={x}>{titleCase(x)}</option>)}</select>
+                    <DeleteBtn p={p} />
                     <button className="btn" disabled={!!busy} onClick={() => act('ra' + p.id, async () => { const token = await reactivateUser(p.id, r); setLink({ who: { name: p.name, email: emailOf(p) }, token }) }, `${p.name} reactivated`)}>Reactivate</button>
                   </div>
                 </div>

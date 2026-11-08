@@ -265,6 +265,11 @@ function App() {
   useEffect(() => {
     if (!session || dev.state !== 'ok' || !sid || bound === sid) return
     setBindErr('')
+    // Someone else's login is still saved here (e.g. the phone was set up for another person): drop it quietly.
+    if (dev.email && String(session.user?.email || '').toLowerCase() !== dev.email.toLowerCase()) {
+      sb.auth.signOut({ scope: 'local' }).catch(() => {})
+      return
+    }
     bindSession(getDeviceSecret())
       .then(() => setBound(sid))
       .catch(async (e) => { setBindErr(e.message || String(e)); try { await sb.auth.signOut({ scope: 'local' }) } catch {} })
@@ -285,7 +290,7 @@ function App() {
 
   const enroll = route[0] === 'enroll' && route[1]
   let body: React.ReactNode
-  if (enroll) body = <EnrollScreen token={route[1]} onDone={() => { go(''); checkDevice() }} />
+  if (enroll) body = <EnrollScreen token={route[1]} onDone={async () => { try { await sb.auth.signOut({ scope: 'local' }) } catch {}; go(''); checkDevice() }} />
   else if (dev.state === 'checking' || session === undefined) body = <div className="splash"><Mark /><span>Loading {APP_NAME}…</span></div>
   else if (dev.state === 'none') body = <Landing />
   else if (dev.state === 'off') body = <Landing notice="Access on this device was turned off by the owner." />
