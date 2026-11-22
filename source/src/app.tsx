@@ -1,5 +1,5 @@
 import { APP_NAME, appBase, WEB_URL } from './brand'
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { initClient, sb, scanSchema, errText } from './db'
 import { OFFLINE, StoreProvider, useStore } from './store'
@@ -213,6 +213,8 @@ type Dev = { state: 'checking' | 'ok' | 'none' | 'off' | 'offline'; email?: stri
 function App() {
   const [session, setSession] = useState<any>(undefined)
   const [dev, setDev] = useState<Dev>({ state: 'checking' })
+  const devRef = useRef(dev.state)
+  devRef.current = dev.state
   const [bound, setBound] = useState<string>('')          // session id that is tied to this device
   const [bindErr, setBindErr] = useState('')
   const [ready, setReady] = useState(false)
@@ -233,7 +235,8 @@ function App() {
     const secret = getDeviceSecret()
     if (!secret) { setDev({ state: 'none' }); return }
     try {
-      const st = await deviceStatus(secret)
+      // Don't wait forever: a paused or down database never answers.
+      const st = await Promise.race([deviceStatus(secret), new Promise<never>((_, no) => setTimeout(() => no(new Error('timeout')), 12000))])
       if (st.ok) setDev({ state: 'ok', email: st.email, name: st.name })
       else {
         setDeviceSecret('')
@@ -246,18 +249,20 @@ function App() {
   useEffect(() => {
     checkDevice()
     const t = setInterval(checkDevice, 60000)
+    const fast = setInterval(() => { if (devRef.current === 'offline') checkDevice() }, 15000)
     const vis = () => { if (document.visibilityState === 'visible') checkDevice() }
     document.addEventListener('visibilitychange', vis)
-    return () => { clearInterval(t); document.removeEventListener('visibilitychange', vis) }
+    return () => { clearInterval(t); clearInterval(fast); document.removeEventListener('visibilitychange', vis) }
   }, [checkDevice])
 
   useEffect(() => {
-    sb.auth.getSession().then(({ data }: any) => setSession(data.session))
+    sb.auth.getSession().then(({ data }: any) => setSession(data.session)).catch(() => setSession(null))
+    const slow = setTimeout(() => setSession((s: any) => (s === undefined ? null : s)), 12000)
     const { data } = sb.auth.onAuthStateChange((ev: string, s: any) => {
       if (ev === 'PASSWORD_RECOVERY') setRecovery(true)
       setSession(s)
     })
-    return () => data.subscription.unsubscribe()
+    return () => { clearTimeout(slow); data.subscription.unsubscribe() }
   }, [])
 
   // Tie each login session to this phone. Without it the database shows nothing.
@@ -297,7 +302,8 @@ function App() {
   else if (dev.state === 'offline') body = (
     <div className="login"><div className="login-card"><Brand big />
       <h2 className="pending-h">Can't reach the database</h2>
-      <p>{APP_NAME} will keep retrying on its own.</p>
+      <p>Your setup and data are safe. {APP_NAME} is retrying on its own every 15 seconds.</p>
+      <p className="muted small">Usually this means the database was paused after a week with no use. The owner can open supabase.com, pick the Lockdesk project and tap Restore project. It comes back in a few minutes.</p>
       <button className="btn primary full big" onClick={checkDevice}>Try again now</button>
     </div></div>
   )
